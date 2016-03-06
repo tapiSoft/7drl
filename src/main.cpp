@@ -8,9 +8,25 @@
 
 #include <entityx/entityx.h>
 
-int main() {
+using namespace entityx;
 
-	entityx::EntityX ex;
+void drawEntities(EntityManager& entities) {
+	TCODColor originalcolor = TCODConsole::root->getDefaultForeground();
+	ComponentHandle<Position> position;
+	ComponentHandle<Model> model;
+	entities.each<Position, Model>([](Entity entity, const Position &position, const Model &model) {
+		TCODConsole::root->setDefaultForeground(model.color);
+		TCODConsole::root->putChar(position.x, position.y, model.character);
+			});
+	TCODConsole::root->setDefaultForeground(originalcolor);
+}
+
+int main() {
+	EntityX ex;
+
+	auto playerentity=ex.entities.create();
+	playerentity.assign<Position>(40, 25);
+	playerentity.assign<Model>('@', TCODColor::white);
 
 	std::shared_ptr<cpptoml::table> config;
 	try {
@@ -26,7 +42,7 @@ int main() {
 		TCODSystem::checkForEvent(TCOD_EVENT_KEY_PRESS, nullptr, nullptr);
 		TCODConsole::root->clear();
 		TCODConsole::root->print(0, 0, "%s", (*config->get_as<std::string>("test")).c_str());
-		TCODConsole::root->putChar(40, 25, PLAYER_CHAR);
+		drawEntities(ex.entities);
 		TCODConsole::flush();
 	}
 	return 0;
