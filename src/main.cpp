@@ -6,7 +6,12 @@
 #include "7drl.hpp"
 #include "util/cpptoml.h"
 
+#include <entityx/entityx.h>
+
 int main() {
+
+	entityx::EntityX ex;
+
 	std::shared_ptr<cpptoml::table> config;
 	try {
 		config = cpptoml::parse_file("7drl.toml");

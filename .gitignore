@@ -3,3 +3,4 @@ build/
 terminal.png
 libtcod-1.5.1/
 src/util/cpptoml.h
+entityx/

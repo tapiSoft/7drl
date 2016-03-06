@@ -15,6 +15,10 @@ if [[ ! -f src/util/cpptoml.h ]]; then
 	wget -O src/util/cpptoml.h -o /dev/null https://raw.githubusercontent.com/skystrife/cpptoml/master/include/cpptoml.h
 fi
 
+if [[ ! -d entityx ]]; then
+	git clone https://github.com/alecthomas/entityx
+fi
+
 cd build
 cmake ..
 echo "
