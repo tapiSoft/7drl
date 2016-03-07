@@ -17,6 +17,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/entityx)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
 add_executable(7drl
 	${CMAKE_CURRENT_SOURCE_DIR}/src/config.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/gamestate.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp
 	)
 

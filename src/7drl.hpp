@@ -2,8 +2,9 @@
 #include <libtcod.hpp>
 #include <vector>
 #include <string>
+#include "config.hpp"
 
-const char PLAYER_CHAR = '@';
+extern std::unique_ptr<Config> GLOBALCONFIG;
 
 struct Position
 {
