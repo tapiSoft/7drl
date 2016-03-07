@@ -15,6 +15,9 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/entityx)
 
 # 7drl
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
-add_executable(7drl ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp)
+add_executable(7drl
+	${CMAKE_CURRENT_SOURCE_DIR}/src/config.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp
+	)
 
 target_link_libraries(7drl LINK_PUBLIC tcod_debug tcodxx_debug entityx)
