@@ -7,6 +7,9 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/libtcod-1.5.1/include)
 link_directories(${CMAKE_CURRENT_SOURCE_DIR}/libtcod-1.5.1)
 
 # entityx
+option(ENTITYX_BUILD_TESTING OFF)
+option(ENTITYX_RUN_BENCHMARKS OFF)
+option(ENTITYX_BUILD_SHARED OFF)
 add_subdirectory(entityx)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/entityx)
 
