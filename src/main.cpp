@@ -44,6 +44,11 @@ struct GameState
 				movePlayer(0, 1);
 				break;
 			*/
+			case TCODK_SPACE:
+				if(!GLOBALCONFIG->keybindings.idle) {
+					break;
+				}
+				break;
 			case TCODK_ESCAPE:
 				return false;
 			case TCODK_CHAR:
@@ -55,6 +60,7 @@ struct GameState
 				else if(key.c == GLOBALCONFIG->keybindings.down) movePlayer(0, 1);
 				else if(key.c == GLOBALCONFIG->keybindings.downleft) movePlayer(-1, 1);
 				else if(key.c == GLOBALCONFIG->keybindings.left) movePlayer(-1, 0);
+				else if(key.c == GLOBALCONFIG->keybindings.idle) break;
 			default:
 				break;
 			}
@@ -96,7 +102,6 @@ int main() {
 	TCODConsole::initRoot(80, 50, "7drl bootstrap", false);
 	while (!TCODConsole::isWindowClosed()) {
 		TCODConsole::root->clear();
-		TCODConsole::root->print(0, 0, "%s", (*config->get_as<std::string>("test")).c_str());
 		drawEntities(state.ex.entities);
 		TCODConsole::flush();
 		TCOD_key_t key;

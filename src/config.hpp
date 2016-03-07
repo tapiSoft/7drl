@@ -10,6 +10,7 @@ struct Keybindings {
 	char down;
 	char downleft;
 	char left;
+	char idle;
 };
 
 struct Config {
