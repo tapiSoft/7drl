@@ -10,6 +10,49 @@
 
 using namespace entityx;
 
+struct GameState
+{
+	EntityX ex;
+	Entity playerentity;
+	GameState() {
+		playerentity = ex.entities.create();
+		playerentity.assign<Position>(40, 25);
+		playerentity.assign<Model>('@', TCODColor::white);
+	}
+
+	// Returns true if game should exit
+	bool handleInput(TCOD_key_t key)
+	{
+		if(key.pressed)
+		{
+			switch (key.vk) {
+			case TCODK_LEFT:
+				movePlayer(-1, 0);
+				break;
+			case TCODK_RIGHT:
+				movePlayer(1, 0);
+				break;
+			case TCODK_UP:
+				movePlayer(0, -1);
+				break;
+			case TCODK_DOWN:
+				movePlayer(0, 1);
+				break;
+			case TCODK_ESCAPE:
+				return true;
+			}
+		}
+		return false;
+	}
+
+	void movePlayer(int16_t dx, int16_t dy) {
+		ComponentHandle<Position> position = playerentity.component<Position>();
+		position->x += dx;
+		position->y += dy;
+	}
+};
+
+
 void drawEntities(EntityManager& entities) {
 	TCODColor originalcolor = TCODConsole::root->getDefaultForeground();
 	ComponentHandle<Position> position;
@@ -22,11 +65,7 @@ void drawEntities(EntityManager& entities) {
 }
 
 int main() {
-	EntityX ex;
-
-	auto playerentity=ex.entities.create();
-	playerentity.assign<Position>(40, 25);
-	playerentity.assign<Model>('@', TCODColor::white);
+	GameState state;
 
 	std::shared_ptr<cpptoml::table> config;
 	try {
@@ -39,11 +78,14 @@ int main() {
 
 	TCODConsole::initRoot(80, 50, "7drl bootstrap", false);
 	while (!TCODConsole::isWindowClosed()) {
-		TCODSystem::checkForEvent(TCOD_EVENT_KEY_PRESS, nullptr, nullptr);
 		TCODConsole::root->clear();
 		TCODConsole::root->print(0, 0, "%s", (*config->get_as<std::string>("test")).c_str());
-		drawEntities(ex.entities);
+		drawEntities(state.ex.entities);
 		TCODConsole::flush();
+		TCOD_key_t key;
+		TCODSystem::waitForEvent(TCOD_EVENT_KEY_PRESS, &key, 0, false);
+		if(state.handleInput(key)) 
+			break;
 	}
 	return 0;
 }
