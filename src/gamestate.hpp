@@ -17,6 +17,7 @@ struct GameState
 	RenderState render;
 	EntityX ex;
 	Entity playerentity;
+	Level currentLevel;
 	GameState();
 
 	// Returns false if game should exit
@@ -24,4 +25,5 @@ struct GameState
 	void movePlayer(int16_t dx, int16_t dy);
 	void toggleInventory();
 	void renderState();
+	void newLevel();
 };

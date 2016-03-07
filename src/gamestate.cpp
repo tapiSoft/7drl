@@ -2,14 +2,19 @@
 
 std::unique_ptr<Config> GLOBALCONFIG;
 
-GameState::GameState() : render(RenderGame) {
-	playerentity = ex.entities.create();
-	playerentity.assign<Position>(40, 25);
-	playerentity.assign<Model>('@', TCODColor::white);
+const TCODColor Level::COLOR_DARK_WALL = TCODColor(0, 0, 100);
+const TCODColor Level::COLOR_LIGHT_WALL = TCODColor(120, 110, 50);
+const TCODColor Level::COLOR_DARK_GROUND = TCODColor(50, 50, 150);
+const TCODColor Level::COLOR_LIGHT_GROUND = TCODColor(200, 180, 50);
+const TCODColor Level::COLORS[] = { Level::COLOR_DARK_GROUND, Level::COLOR_DARK_WALL, Level::COLOR_LIGHT_GROUND, Level::COLOR_LIGHT_WALL};
 
+GameState::GameState() : render(RenderGame), currentLevel(20, 20) {
+	playerentity = ex.entities.create();
+	playerentity.assign<Model>('@', TCODColor::white);
 	playerentity.assign<Inventory>(Inventory {
 		{itemList[0]},
 	});
+	newLevel();
 }
 
 // Returns false if game should exit
@@ -67,8 +72,11 @@ bool GameState::handleInput(TCOD_key_t key) {
 
 void GameState::movePlayer(int16_t dx, int16_t dy) {
 	ComponentHandle<Position> position = playerentity.component<Position>();
-	position->x += dx;
-	position->y += dy;
+	if (currentLevel.canMoveTo(position->x + dx, position->y + dy)) {
+		position->x += dx;
+		position->y += dy;
+		currentLevel.refreshFov(*position.get());
+	}
 }
 
 void GameState::toggleInventory() {
@@ -80,6 +88,7 @@ void GameState::renderState() {
 	TCODConsole::root->clear();
 	switch(this->render) {
 		case RenderGame: {
+			currentLevel.draw();
 			TCODColor originalcolor = TCODConsole::root->getDefaultForeground();
 			this->ex.entities.each<const Position, const Model>([](const Entity&, const Position &position, const Model &model) {
 				TCODConsole::root->setDefaultForeground(model.color);
@@ -99,4 +108,9 @@ void GameState::renderState() {
 			break;
 	}
 	TCODConsole::flush();
+}
+
+void GameState::newLevel() {
+	currentLevel.generate();
+	playerentity.replace<Position>(currentLevel.initialpos);
 }
