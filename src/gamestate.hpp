@@ -30,11 +30,20 @@ struct GameState
 
 class MovementSystem : public System<MovementSystem> {
 	private:
+		Entity player;
 		Level *level;
 	public:
-		explicit MovementSystem(Level *level) : level(level) {}
+		explicit MovementSystem(Entity player, Level *level) : player(player), level(level) {}
 		void update(EntityManager &em, EventManager &evm, TimeDelta) override {
-			em.each<Position, Direction>([&](Entity, Position &pos, Direction &d) {
+			em.each<Position, Behavior>([&](Entity, Position &pos, const Behavior &b) {
+				auto newpos = b.movementBehavior(pos);
+				if(level->canMoveTo(newpos.x, newpos.y)) {
+					if(newpos == *player.component<Position>().get()) {
+						evm.emit<Collision>(newpos.x, newpos.y);
+					} else pos = newpos;
+				}
+			});
+			em.each<Position, Direction>([&](Entity entity, Position &pos, Direction &d) {
 				int destx = pos.x;
 				int desty = pos.y;
 				auto amount = 1;
@@ -74,6 +83,7 @@ class MovementSystem : public System<MovementSystem> {
 					// Check collisions with other entities
 					for(auto e : em.entities_with_components<Position>())
 					{
+						if(e == entity) continue; // Ignore ourselves
 						auto pos = e.component<Position>().get();
 						if(pos->x == destx && pos->y == desty) {
 							evm.emit<Collision>(pos->x, pos->y);

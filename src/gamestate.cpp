@@ -20,7 +20,7 @@ GameState::GameState() : render(RenderGame), currentLevel(20, 20) {
 
 	newLevel();
 
-	ex.systems.add<MovementSystem>(&currentLevel);
+	ex.systems.add<MovementSystem>(playerentity, &currentLevel);
 	ex.systems.add<DebugSystem>();
 	ex.systems.configure();
 
@@ -36,6 +36,7 @@ GameState::GameState() : render(RenderGame), currentLevel(20, 20) {
 			y = random(1, currentLevel.height);
 		} while(!currentLevel.canMoveTo(x, y));
 		monster.assign<Position>(Position {x, y});
+		monster.assign<Behavior>(Behavior {[](Position pos) { pos.x += random(-1, 1); pos.y += random(-1, 1); return pos;}});
 	}
 }
 
@@ -66,6 +67,8 @@ bool GameState::handleInput(TCOD_key_t key) {
 			break;
 		case TCODK_SPACE:
 			if(!GLOBALCONFIG->keybindings.idle) {
+				auto dir = playerentity.component<Direction>().get();
+				*dir = None;
 				break;
 			}
 			break;
@@ -107,9 +110,11 @@ void GameState::renderState() {
 		case RenderGame: {
 			currentLevel.draw();
 			TCODColor originalcolor = TCODConsole::root->getDefaultForeground();
-			ex.entities.each<const Position, const Model>([](const Entity&, const Position &position, const Model &model) {
-				TCODConsole::root->setDefaultForeground(model.color);
-				TCODConsole::root->putChar(position.x, position.y, model.character);
+			ex.entities.each<const Position, const Model>([&](const Entity&, const Position &position, const Model &model) {
+				if(currentLevel.map.isInFov(position.x, position.y)) {
+					TCODConsole::root->setDefaultForeground(model.color);
+					TCODConsole::root->putChar(position.x, position.y, model.character);
+				}
 			});
 			TCODConsole::root->setDefaultForeground(originalcolor);
 			break;

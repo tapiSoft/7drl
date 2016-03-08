@@ -11,6 +11,8 @@ struct Position
 	uint16_t x;
 	uint16_t y;
 	Position(uint16_t x, uint16_t y) : x(x), y(y) {}
+	bool operator==(const Position &rhs) { return x == rhs.x && y == rhs.y; }
+	bool operator!=(const Position &rhs) { return !(*this == rhs); }
 };
 
 typedef Position Collision;
@@ -42,6 +44,11 @@ struct Item
 struct Inventory
 {
 	std::vector<Item> items;
+};
+
+struct Behavior
+{
+	std::function<Position(Position)> movementBehavior;
 };
 
 struct Cell {
@@ -103,7 +110,9 @@ struct Level {
 				}
 			}
 	}
-	void refreshFov(Position pos) { map.computeFov(pos.x, pos.y, 3); }
+	void refreshFov(Position pos) {
+		map.computeFov(pos.x, pos.y, 3);
+	}
 	bool canMoveTo(int x, int y) {
 		if(x < width && x >= 0 && y < height && y >= 0)
 			return celldata[x*width + y].notwall;
