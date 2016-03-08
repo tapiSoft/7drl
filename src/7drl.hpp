@@ -136,10 +136,10 @@ struct Level {
 		// centering on player
 		for (int y = std::max(0, -yoffset); y < screenheight; ++y) {
 			int mapy = y + yoffset;
-			if(mapy > height) break;
+			if(mapy >= height) break;
 				for (int x = std::max(0, -xoffset); x < screenwidth; ++x) {
 					int mapx = x + xoffset;
-					if (mapx > width) break;
+					if (mapx >= width) break;
 					int i = mapy*width + mapx;
 					if (map.isInFov(mapx, mapy))
 						celldata[i].explored = celldata[i].visible = true;
