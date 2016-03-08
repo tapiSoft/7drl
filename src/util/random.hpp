@@ -1,7 +1,6 @@
 #pragma once
 
 #include <random>
-#include <functional>
 
 template<typename T>
 T random(T range_start, T range_end)
