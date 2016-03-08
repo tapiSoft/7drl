@@ -2,6 +2,7 @@
 #include <libtcod.hpp>
 #include <vector>
 #include <string>
+#include <functional>
 #include "config.hpp"
 
 extern std::unique_ptr<Config> GLOBALCONFIG;
