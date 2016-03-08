@@ -41,28 +41,28 @@ class MovementSystem : public System<MovementSystem> {
 				switch(d) {
 					case UpRight:
 						destx += amount;
-						desty += amount;
+						desty -= amount;
 						break;
 					case UpLeft:
 						destx -= amount;
-						desty += amount;
+						desty -= amount;
 						break;
 					case Up:
-						desty += amount;
+						desty -= amount;
 						break;
 					case Right:
 						destx += amount;
 						break;
 					case DownRight:
 						destx += amount;
-						desty -= amount;
+						desty += amount;
 						break;
 					case Down:
-						desty -= amount;
+						desty += amount;
 						break;
 					case DownLeft:
 						destx -= amount;
-						desty -= amount;
+						desty += amount;
 						break;
 					case Left:
 						destx -= amount;
@@ -87,4 +87,14 @@ class MovementSystem : public System<MovementSystem> {
 				}
 			});
 		}
+};
+
+struct DebugSystem : public System<DebugSystem>, public Receiver<DebugSystem> {
+	void configure(EventManager &evm) override {
+		evm.subscribe<Collision>(*this);
+	}
+	void update(EntityManager &, EventManager &, TimeDelta) override {}
+	void receive(const Collision &c) {
+		std::cout << "[DebugSystem]: Player ran into a monster at (" << c.x << ", " << c.y << ")" << std::endl;
+	}
 };

@@ -19,7 +19,10 @@ GameState::GameState() : render(RenderGame), currentLevel(20, 20) {
 	});
 
 	newLevel();
+
 	ex.systems.add<MovementSystem>(&currentLevel);
+	ex.systems.add<DebugSystem>();
+	ex.systems.configure();
 
 	for(auto i=0; i<4; ++i)
 	{

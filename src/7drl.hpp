@@ -12,6 +12,7 @@ struct Position
 	uint16_t y;
 	Position(uint16_t x, uint16_t y) : x(x), y(y) {}
 };
+
 typedef Position Collision;
 
 enum Direction {
