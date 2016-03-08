@@ -15,4 +15,5 @@ Config::Config(cpptoml::table *config) {
 	};
 	this->width = config->get_as<int64_t>("width").value_or(80);
 	this->height = config->get_as<int64_t>("height").value_or(50);
+	this->consoleSize = config->get_as<int64_t>("console_size").value_or(5);
 }

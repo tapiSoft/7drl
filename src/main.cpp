@@ -10,7 +10,6 @@
 #include "util/cpptoml.h"
 
 int main() {
-	GameState state;
 
 	std::shared_ptr<cpptoml::table> config;
 	try {
@@ -20,10 +19,10 @@ int main() {
 		std::cout << e.what() << std::endl;
 		exit(1);
 	}
-
 	GLOBALCONFIG = std::make_unique<Config>(Config(config.get()));
 
 	TCODConsole::initRoot(GLOBALCONFIG->width, GLOBALCONFIG->height, "7drl bootstrap", false);
+	GameState state;
 	while (!TCODConsole::isWindowClosed()) {
 		state.renderState();
 		TCOD_key_t key;

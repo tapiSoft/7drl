@@ -4,6 +4,7 @@
 #include "items.hpp"
 
 #include <entityx/entityx.h>
+#include <deque>
 
 using namespace entityx;
 
@@ -39,6 +40,7 @@ class MovementSystem : public System<MovementSystem> {
 				auto newpos = b.movementBehavior(pos);
 				if(level->canMoveTo(newpos.x, newpos.y)) {
 					if(newpos == *player.component<Position>().get()) {
+						evm.emit<ConsoleMessage>("A monster bumps into you.");
 						evm.emit<Collision>(newpos.x, newpos.y);
 					} else pos = newpos;
 				}
@@ -87,6 +89,7 @@ class MovementSystem : public System<MovementSystem> {
 						auto pos = e.component<Position>().get();
 						if(pos->x == destx && pos->y == desty) {
 							evm.emit<Collision>(pos->x, pos->y);
+							evm.emit<ConsoleMessage>("You bump into a monster.");
 							return;
 						}
 					}
@@ -107,4 +110,34 @@ struct DebugSystem : public System<DebugSystem>, public Receiver<DebugSystem> {
 	void receive(const Collision &c) {
 		std::cout << "[DebugSystem]: Player ran into a monster at (" << c.x << ", " << c.y << ")" << std::endl;
 	}
+};
+
+class ConsoleSystem : public System<ConsoleSystem>, public Receiver<ConsoleSystem> {
+	private:
+		uint8_t bufferSize;
+		TCODConsole messageConsole;
+		std::deque<std::string> messageBuffer;
+	public:
+		explicit ConsoleSystem(uint8_t buffersize) : bufferSize(buffersize), messageConsole(GLOBALCONFIG->width, buffersize) {}
+		void configure(EventManager &evm) override {
+			messageConsole.setDefaultBackground(TCODColor::darkestGrey);
+			messageConsole.setDefaultForeground(TCODColor::white);
+			evm.subscribe<ConsoleMessage>(*this);
+		}
+		void update(EntityManager &, EventManager &, TimeDelta) override {
+			messageConsole.clear();
+			for(size_t i=0; i<messageBuffer.size(); ++i)
+			{
+				messageConsole.print(1, i+1, "%s", messageBuffer[i].c_str());
+			}
+		}
+		void receive(const ConsoleMessage &msg) {
+			messageBuffer.push_back(msg);
+			if(messageBuffer.size() >= bufferSize) {
+				messageBuffer.pop_front();
+			}
+		}
+		TCODConsole &GetConsole() {
+			return messageConsole;
+		}
 };

@@ -10,6 +10,8 @@
 
 extern std::unique_ptr<Config> GLOBALCONFIG;
 
+typedef std::string ConsoleMessage;
+
 struct Position
 {
 	uint16_t x;

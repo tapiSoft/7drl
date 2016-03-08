@@ -10,7 +10,6 @@ const TCODColor Level::COLOR_LIGHT_GROUND = TCODColor(200, 180, 50);
 const TCODColor Level::COLORS[] = { Level::COLOR_DARK_GROUND, Level::COLOR_DARK_WALL, Level::COLOR_LIGHT_GROUND, Level::COLOR_LIGHT_WALL};
 
 GameState::GameState() : render(RenderGame), currentLevel(100, 100) {
-
 	playerentity = ex.entities.create();
 	playerentity.assign<Model>('@', TCODColor::white);
 	playerentity.assign<Direction>(None);
@@ -22,6 +21,7 @@ GameState::GameState() : render(RenderGame), currentLevel(100, 100) {
 
 	ex.systems.add<MovementSystem>(playerentity, &currentLevel);
 	ex.systems.add<DebugSystem>();
+	ex.systems.add<ConsoleSystem>((uint8_t)GLOBALCONFIG->consoleSize);
 	ex.systems.configure();
 
 	for(auto i=0; i<4; ++i)
@@ -124,6 +124,8 @@ void GameState::renderState() {
 				}
 			});
 			TCODConsole::root->setDefaultForeground(originalcolor);
+			auto &messageconsole = ex.systems.system<ConsoleSystem>()->GetConsole();
+			TCODConsole::blit(&messageconsole, 0, 0, GLOBALCONFIG->width, GLOBALCONFIG->consoleSize, TCODConsole::root, 0, GLOBALCONFIG->height-GLOBALCONFIG->consoleSize);
 			break;
 		}
 		case RenderInventory:
