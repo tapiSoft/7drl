@@ -28,8 +28,11 @@ int main() {
 		state.renderState();
 		TCOD_key_t key;
 		TCODSystem::waitForEvent(TCOD_EVENT_KEY_PRESS, &key, 0, false);
-		if(!state.handleInput(key))
-			break;
+		if(state.handleInput(key))
+		{
+			state.ex.systems.update_all(0);
+		}
+		else break;
 	}
 	return 0;
 }

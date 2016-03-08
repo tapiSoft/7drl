@@ -10,13 +10,16 @@ const TCODColor Level::COLOR_LIGHT_GROUND = TCODColor(200, 180, 50);
 const TCODColor Level::COLORS[] = { Level::COLOR_DARK_GROUND, Level::COLOR_DARK_WALL, Level::COLOR_LIGHT_GROUND, Level::COLOR_LIGHT_WALL};
 
 GameState::GameState() : render(RenderGame), currentLevel(20, 20) {
+
 	playerentity = ex.entities.create();
 	playerentity.assign<Model>('@', TCODColor::white);
+	playerentity.assign<Direction>(None);
 	playerentity.assign<Inventory>(Inventory {
 		{itemList[0]},
 	});
 
 	newLevel();
+	ex.systems.add<MovementSystem>(&currentLevel);
 
 	for(auto i=0; i<4; ++i)
 	{
@@ -68,15 +71,19 @@ bool GameState::handleInput(TCOD_key_t key) {
 		case TCODK_CHAR:
 			if(this->render == RenderGame)
 			{
-				if(key.c == GLOBALCONFIG->keybindings.upleft) movePlayer(-1, -1);
-				else if(key.c == GLOBALCONFIG->keybindings.up) movePlayer(0, -1);
-				else if(key.c == GLOBALCONFIG->keybindings.upright) movePlayer(1, -1);
-				else if(key.c == GLOBALCONFIG->keybindings.right) movePlayer(1, 0);
-				else if(key.c == GLOBALCONFIG->keybindings.downright) movePlayer(1, 1);
-				else if(key.c == GLOBALCONFIG->keybindings.down) movePlayer(0, 1);
-				else if(key.c == GLOBALCONFIG->keybindings.downleft) movePlayer(-1, 1);
-				else if(key.c == GLOBALCONFIG->keybindings.left) movePlayer(-1, 0);
-				else if(key.c == GLOBALCONFIG->keybindings.idle) break;
+				auto dir = playerentity.component<Direction>().get();
+				if(key.c == GLOBALCONFIG->keybindings.upleft) *dir = UpLeft;
+				else if(key.c == GLOBALCONFIG->keybindings.up) *dir = Up;
+				else if(key.c == GLOBALCONFIG->keybindings.upright) *dir = UpRight;
+				else if(key.c == GLOBALCONFIG->keybindings.right) *dir = Right;
+				else if(key.c == GLOBALCONFIG->keybindings.downright) *dir = DownRight;
+				else if(key.c == GLOBALCONFIG->keybindings.down) *dir = Down;
+				else if(key.c == GLOBALCONFIG->keybindings.downleft) *dir = DownLeft;
+				else if(key.c == GLOBALCONFIG->keybindings.left) *dir = Left;
+				else if(key.c == GLOBALCONFIG->keybindings.idle) {
+					*dir = None;
+					break;
+				}
 			}
 			else if(key.c == GLOBALCONFIG->keybindings.inventory) toggleInventory();
 		default:
@@ -84,25 +91,6 @@ bool GameState::handleInput(TCOD_key_t key) {
 		}
 	}
 	return true;
-}
-
-void GameState::movePlayer(int16_t dx, int16_t dy) {
-	ComponentHandle<Position> position = playerentity.component<Position>();
-	auto destx = position->x + dx;
-	auto desty = position->y + dy;
-	if (currentLevel.canMoveTo(destx, desty)) {
-
-		// Check collisions with other entities
-		for(auto e : ex.entities.entities_with_components<Position>())
-		{
-			auto pos = e.component<Position>().get();
-			if(pos->x == destx && pos->y == desty) return;
-		}
-
-		position->x = destx;
-		position->y = desty;
-		currentLevel.refreshFov(*position.get());
-	}
 }
 
 void GameState::toggleInventory() {
