@@ -1,4 +1,5 @@
 #include "gamestate.hpp"
+#include "util/random.hpp"
 
 std::unique_ptr<Config> GLOBALCONFIG;
 
@@ -14,7 +15,22 @@ GameState::GameState() : render(RenderGame), currentLevel(20, 20) {
 	playerentity.assign<Inventory>(Inventory {
 		{itemList[0]},
 	});
+
 	newLevel();
+
+	for(auto i=0; i<4; ++i)
+	{
+		auto monster = ex.entities.create();
+		monster.assign<Model>('m', TCODColor::darkerPurple);
+		monster.assign<Inventory>(Inventory {{itemList[0]}});
+		uint16_t x, y;
+		do {
+			// TODO: Better randomization
+			x = random(1, currentLevel.width);
+			y = random(1, currentLevel.height);
+		} while(!currentLevel.canMoveTo(x, y));
+		monster.assign<Position>(Position {x, y});
+	}
 }
 
 // Returns false if game should exit
@@ -72,9 +88,19 @@ bool GameState::handleInput(TCOD_key_t key) {
 
 void GameState::movePlayer(int16_t dx, int16_t dy) {
 	ComponentHandle<Position> position = playerentity.component<Position>();
-	if (currentLevel.canMoveTo(position->x + dx, position->y + dy)) {
-		position->x += dx;
-		position->y += dy;
+	auto destx = position->x + dx;
+	auto desty = position->y + dy;
+	if (currentLevel.canMoveTo(destx, desty)) {
+
+		// Check collisions with other entities
+		for(auto e : ex.entities.entities_with_components<Position>())
+		{
+			auto pos = e.component<Position>().get();
+			if(pos->x == destx && pos->y == desty) return;
+		}
+
+		position->x = destx;
+		position->y = desty;
 		currentLevel.refreshFov(*position.get());
 	}
 }
@@ -90,7 +116,7 @@ void GameState::renderState() {
 		case RenderGame: {
 			currentLevel.draw();
 			TCODColor originalcolor = TCODConsole::root->getDefaultForeground();
-			this->ex.entities.each<const Position, const Model>([](const Entity&, const Position &position, const Model &model) {
+			ex.entities.each<const Position, const Model>([](const Entity&, const Position &position, const Model &model) {
 				TCODConsole::root->setDefaultForeground(model.color);
 				TCODConsole::root->putChar(position.x, position.y, model.character);
 			});

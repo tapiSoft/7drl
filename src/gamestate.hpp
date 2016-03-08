@@ -17,6 +17,7 @@ struct GameState
 	RenderState render;
 	EntityX ex;
 	Entity playerentity;
+	std::vector<Entity> monsters;
 	Level currentLevel;
 	GameState();
 
