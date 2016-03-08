@@ -9,7 +9,7 @@ const TCODColor Level::COLOR_DARK_GROUND = TCODColor(50, 50, 150);
 const TCODColor Level::COLOR_LIGHT_GROUND = TCODColor(200, 180, 50);
 const TCODColor Level::COLORS[] = { Level::COLOR_DARK_GROUND, Level::COLOR_DARK_WALL, Level::COLOR_LIGHT_GROUND, Level::COLOR_LIGHT_WALL};
 
-GameState::GameState() : render(RenderGame), currentLevel(20, 20) {
+GameState::GameState() : render(RenderGame), currentLevel(100, 100) {
 
 	playerentity = ex.entities.create();
 	playerentity.assign<Model>('@', TCODColor::white);
@@ -108,12 +108,19 @@ void GameState::renderState() {
 	TCODConsole::root->clear();
 	switch(this->render) {
 		case RenderGame: {
-			currentLevel.draw();
+			int screenwidth = TCODConsole::root->getWidth();
+			int screenheight = TCODConsole::root->getHeight();
+			int centerx = screenwidth / 2;
+			int centery = screenheight / 2;
+			int xoffset = playerentity.component<Position>()->x - centerx;
+			int yoffset = playerentity.component<Position>()->y - centery;
+
+			currentLevel.draw(xoffset, yoffset, screenwidth, screenheight);
 			TCODColor originalcolor = TCODConsole::root->getDefaultForeground();
 			ex.entities.each<const Position, const Model>([&](const Entity&, const Position &position, const Model &model) {
 				if(currentLevel.map.isInFov(position.x, position.y)) {
 					TCODConsole::root->setDefaultForeground(model.color);
-					TCODConsole::root->putChar(position.x, position.y, model.character);
+					TCODConsole::root->putChar(position.x-xoffset, position.y-yoffset, model.character);
 				}
 			});
 			TCODConsole::root->setDefaultForeground(originalcolor);
