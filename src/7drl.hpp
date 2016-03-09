@@ -17,8 +17,8 @@ struct Position
 	uint16_t x;
 	uint16_t y;
 	Position(uint16_t x, uint16_t y) : x(x), y(y) {}
-	bool operator==(const Position &rhs) { return x == rhs.x && y == rhs.y; }
-	bool operator!=(const Position &rhs) { return !(*this == rhs); }
+	bool operator==(const Position &rhs) const { return x == rhs.x && y == rhs.y; }
+	bool operator!=(const Position &rhs) const { return !(*this == rhs); }
 };
 
 typedef Position Collision;

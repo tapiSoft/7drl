@@ -31,106 +31,109 @@ struct GameState
 
 class MovementSystem : public System<MovementSystem> {
 	private:
+		RenderState *renderState;
 		Entity player;
 		Level *level;
 	public:
-		explicit MovementSystem(Entity player, Level *level) : player(player), level(level) {}
+		explicit MovementSystem(RenderState *renderState, Entity player, Level *level) : renderState(renderState), player(player), level(level) {}
 		void update(EntityManager &em, EventManager &evm, TimeDelta) override {
-			em.each<Position, Behavior>([&](Entity e, Position &pos, const Behavior &b) {
-				auto newpos = b.movementBehavior(pos);
-				if(level->canMoveTo(newpos.x, newpos.y)) {
-					if(newpos == *player.component<Position>().get()) {
-						auto life = e.component<Life>();
-						if(life) {
-							if(life->amount > 0) {
-								evm.emit<ConsoleMessage>("A monster bumps into you.");
+			if(*renderState == RenderGame) {
+				em.each<Position, Behavior>([&](Entity e, Position &pos, const Behavior &b) {
+					auto newpos = b.movementBehavior(pos);
+					if(level->canMoveTo(newpos.x, newpos.y)) {
+						if(newpos == *player.component<Position>().get()) {
+							auto life = e.component<Life>();
+							if(life) {
+								if(life->amount > 0) {
+									evm.emit<ConsoleMessage>("A monster bumps into you.");
+									evm.emit<Collision>(newpos.x, newpos.y);
+								}
+							} else {
+								evm.emit<ConsoleMessage>("A lifeless monster bumps into you.");
 								evm.emit<Collision>(newpos.x, newpos.y);
 							}
 						} else {
-							evm.emit<ConsoleMessage>("A lifeless monster bumps into you.");
-							evm.emit<Collision>(newpos.x, newpos.y);
-						}
-					} else {
-						auto life = e.component<Life>();
-						if(life) {
-							if(life->amount > 0) {
-								pos = newpos;
-							}
-						} else {
-							pos = newpos;
-						}
-					}
-				}
-			});
-			em.each<Position, Direction>([&](Entity entity, Position &pos, Direction &d) {
-				int destx = pos.x;
-				int desty = pos.y;
-				auto amount = 1;
-				switch(d) {
-					case UpRight:
-						destx += amount;
-						desty -= amount;
-						break;
-					case UpLeft:
-						destx -= amount;
-						desty -= amount;
-						break;
-					case Up:
-						desty -= amount;
-						break;
-					case Right:
-						destx += amount;
-						break;
-					case DownRight:
-						destx += amount;
-						desty += amount;
-						break;
-					case Down:
-						desty += amount;
-						break;
-					case DownLeft:
-						destx -= amount;
-						desty += amount;
-						break;
-					case Left:
-						destx -= amount;
-						break;
-					case None:
-						break;
-				}
-				if(level->canMoveTo(destx, desty)) {
-					// Check collisions with other entities
-					for(auto e : em.entities_with_components<Position>())
-					{
-						if(e == entity) continue; // Ignore ourselves
-						auto pos = e.component<Position>().get();
-						auto life = e.component<Life>();
-						if(pos->x == destx && pos->y == desty) {
-							if(life)  {
+							auto life = e.component<Life>();
+							if(life) {
 								if(life->amount > 0) {
-									evm.emit<Collision>(pos->x, pos->y);
-									evm.emit<ConsoleMessage>("You hit the monster in the nose.");
-									life->amount--;
-									if(life->amount == 0) {
-										evm.emit<ConsoleMessage>("The monster dies...");
-									}
-									return;
-								} else {
-									evm.emit<ConsoleMessage>("There's a dead monster here.");
+									pos = newpos;
 								}
 							} else {
-								evm.emit<Collision>(pos->x, pos->y);
-								evm.emit<ConsoleMessage>("You bump into a lifeless thing.");
-								return;
+								pos = newpos;
 							}
 						}
 					}
+				});
+				em.each<Position, Direction>([&](Entity entity, Position &pos, Direction &d) {
+					int destx = pos.x;
+					int desty = pos.y;
+					auto amount = 1;
+					switch(d) {
+						case UpRight:
+							destx += amount;
+							desty -= amount;
+							break;
+						case UpLeft:
+							destx -= amount;
+							desty -= amount;
+							break;
+						case Up:
+							desty -= amount;
+							break;
+						case Right:
+							destx += amount;
+							break;
+						case DownRight:
+							destx += amount;
+							desty += amount;
+							break;
+						case Down:
+							desty += amount;
+							break;
+						case DownLeft:
+							destx -= amount;
+							desty += amount;
+							break;
+						case Left:
+							destx -= amount;
+							break;
+						case None:
+							break;
+					}
+					if(level->canMoveTo(destx, desty)) {
+						// Check collisions with other entities
+						for(auto e : em.entities_with_components<Position>())
+						{
+							if(e == entity) continue; // Ignore ourselves
+							auto pos = e.component<Position>().get();
+							auto life = e.component<Life>();
+							if(pos->x == destx && pos->y == desty) {
+								if(life)  {
+									if(life->amount > 0) {
+										evm.emit<Collision>(pos->x, pos->y);
+										evm.emit<ConsoleMessage>("You hit the monster in the nose.");
+										life->amount--;
+										if(life->amount == 0) {
+											evm.emit<ConsoleMessage>("The monster dies...");
+										}
+										return;
+									} else {
+										evm.emit<ConsoleMessage>("There's a dead monster here.");
+									}
+								} else {
+									evm.emit<Collision>(pos->x, pos->y);
+									evm.emit<ConsoleMessage>("You bump into a lifeless thing.");
+									return;
+								}
+							}
+						}
 
-					pos.x = destx;
-					pos.y = desty;
-					level->refreshFov(pos);
-				}
-			});
+						pos.x = destx;
+						pos.y = desty;
+						level->refreshFov(pos);
+					}
+				});
+			}
 		}
 };
 

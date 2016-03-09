@@ -20,7 +20,7 @@ GameState::GameState() : render(RenderGame), currentLevel(100, 100) {
 	newLevel();
 
 	ex.systems.add<ConsoleSystem>((uint8_t)GLOBALCONFIG->consoleSize);
-	ex.systems.add<MovementSystem>(playerentity, &currentLevel);
+	ex.systems.add<MovementSystem>(&render, playerentity, &currentLevel);
 	ex.systems.add<DebugSystem>();
 	ex.systems.configure();
 
@@ -64,6 +64,8 @@ bool GameState::handleInput(TCOD_key_t key) {
 		case TCODK_TAB:
 			if(!GLOBALCONFIG->keybindings.inventory) {
 				toggleInventory();
+				auto dir = playerentity.component<Direction>().get();
+				*dir = None;
 			}
 			break;
 		case TCODK_SPACE:
@@ -87,7 +89,7 @@ bool GameState::handleInput(TCOD_key_t key) {
 				else if(key.c == GLOBALCONFIG->keybindings.down) *dir = Down;
 				else if(key.c == GLOBALCONFIG->keybindings.downleft) *dir = DownLeft;
 				else if(key.c == GLOBALCONFIG->keybindings.left) *dir = Left;
-				else if(key.c == GLOBALCONFIG->keybindings.idle) {
+				else {
 					*dir = None;
 					break;
 				}
@@ -132,6 +134,7 @@ void GameState::renderState() {
 				}
 			});
 
+			// TODO: How to draw player last without drawing it twice?
 			TCODConsole::root->setDefaultForeground(originalcolor);
 			auto playerpos = playerentity.component<Position>().get();
 			auto playermodel = playerentity.component<Model>().get();
@@ -146,10 +149,24 @@ void GameState::renderState() {
 			std::string str = "Inventory";
 			TCODConsole::root->print(GLOBALCONFIG->width/2 - str.length()/2, 1, "%s", str.c_str());
 			auto i = 2;
+			TCODConsole::root->print(2, i++, "Your inventory:");
 			for(auto &item : this->playerentity.component<const Inventory>()->items)
 			{
 				TCODConsole::root->print(2, i++, "%s", item.name.c_str());
 			}
+			i+=2;
+			TCODConsole::root->print(2, i++, "Surroundings:");
+			auto playerpos = this->playerentity.component<const Position>().get();
+			ex.entities.each<const Position, const Inventory>([&](Entity e, const Position &pos, const Inventory &inv) {
+				if(e != playerentity) {
+					if(pos == *playerpos) {
+						for(auto &item : inv.items)
+						{
+							TCODConsole::root->print(2, i++, "%s", item.name.c_str());
+						}
+					}
+				}
+			});
 			break;
 	}
 	TCODConsole::flush();
