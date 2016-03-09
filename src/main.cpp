@@ -21,6 +21,7 @@ int main() {
 	}
 	GLOBALCONFIG = std::make_unique<Config>(Config(config.get()));
 
+	TCODConsole::setCustomFont("terminal.png", TCOD_FONT_LAYOUT_TCOD | TCOD_FONT_TYPE_GREYSCALE, 0, 0);
 	TCODConsole::initRoot(GLOBALCONFIG->width, GLOBALCONFIG->height, "7drl bootstrap", false);
 	GameState state;
 	while (!TCODConsole::isWindowClosed()) {
