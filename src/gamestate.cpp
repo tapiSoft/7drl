@@ -9,6 +9,41 @@ const TCODColor Level::COLOR_DARK_GROUND = TCODColor(50, 50, 150);
 const TCODColor Level::COLOR_LIGHT_GROUND = TCODColor(200, 180, 50);
 const TCODColor Level::COLORS[] = { Level::COLOR_DARK_GROUND, Level::COLOR_DARK_WALL, Level::COLOR_LIGHT_GROUND, Level::COLOR_LIGHT_WALL};
 
+void monsterMovement(entityx::Entity e, GameState *state) {
+	Position playerpos = *state->playerentity.component<Position>().get();
+	Position newpos = *e.component<Position>().get();
+	if(e.component<Behavior>()->seenPlayer) { // Attack the player! (TODO : could maybe cache the path or something)
+		TCODPath path(&state->currentLevel.map);
+		path.compute(newpos.x, newpos.y, playerpos.x, playerpos.y);
+		int newx, newy;
+		path.walk(&newx, &newy, false);
+		newpos.x = newx; newpos.y = newy;
+	}
+	else { // Wander around aimlessly
+		if(random(0, 1)) newpos.x += random(0, 1) ? 1 : -1;
+		else newpos.y += random(0, 1) ? 1 : -1;
+	}
+	if(state->currentLevel.canMoveTo(newpos.x, newpos.y)) { // TODO : what about monster-monster collisions
+		if(newpos == playerpos) {
+			auto combat = e.component<Combat>();
+			if(combat) {
+				assert(combat->life > 0);
+				auto dmg = combat->damage.getDamage();
+				
+				state->ex.events.emit<ConsoleMessage>("A monster hits you for " + std::to_string(dmg) + " damage.");
+				state->ex.events.emit<Collision>(newpos.x, newpos.y);
+			} else {
+				state->ex.events.emit<ConsoleMessage>("A lifeless monster bumps into you.");
+				state->ex.events.emit<Collision>(newpos.x, newpos.y);
+			}
+		} else {
+			e.component<Position>()->x = newpos.x;
+			e.component<Position>()->y = newpos.y;
+		}
+	}
+}
+
+
 GameState::GameState() : render(RenderGame), currentLevel(100, 100) {
 	playerentity = ex.entities.create();
 	playerentity.assign<Model>('@', TCODColor::white);
@@ -20,7 +55,7 @@ GameState::GameState() : render(RenderGame), currentLevel(100, 100) {
 
 	newLevel();
 
-	ex.systems.add<MovementSystem>(&render, playerentity, &currentLevel);
+	ex.systems.add<MovementSystem>(&render, playerentity, this);
 	ex.systems.add<ConsoleSystem>((uint8_t)GLOBALCONFIG->consoleSize);
 	ex.systems.add<DebugSystem>();
 	ex.systems.configure();
@@ -37,7 +72,7 @@ GameState::GameState() : render(RenderGame), currentLevel(100, 100) {
 			y = random(1, currentLevel.height);
 		} while(!currentLevel.canMoveTo(x, y));
 		monster.assign<Position>(Position {x, y});
-		monster.assign<Behavior>(Behavior {[](Position pos) { pos.x += random(-1, 1); pos.y += random(-1, 1); return pos;}});
+		monster.assign<Behavior>(monsterMovement);
 		monster.assign<Combat>(10, Damage(1, 4, 1));
 	}
 }
@@ -128,6 +163,12 @@ void GameState::renderState() {
 					if(combat) {
 						if(combat->life == 0) {
 							color = TCODColor::darkRed;
+						}
+						else {
+							if(e.has_component<Behavior>() && !e.component<Behavior>()->seenPlayer) {
+								e.component<Behavior>()->seenPlayer = true;
+								ex.events.emit<ConsoleMessage>("The monster notices you and becomes angry!");
+							}
 						}
 					}
 					TCODConsole::root->setDefaultForeground(color);

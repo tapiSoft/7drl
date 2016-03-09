@@ -5,6 +5,7 @@
 #include "util/random.hpp"
 #include <functional>
 #include "config.hpp"
+#include <entityx\entityx.h>
 
 #include <iostream>
 
@@ -73,9 +74,12 @@ struct Inventory
 	std::vector<Item> items;
 };
 
+struct GameState;
 struct Behavior
 {
-	std::function<Position(Position)> movementBehavior;
+	bool seenPlayer;
+	std::function<void(entityx::Entity, GameState*)> movementBehavior;
+	Behavior(std::function<void(entityx::Entity, GameState*)> movementBehavior) : seenPlayer(false), movementBehavior(movementBehavior) {}
 };
 
 struct Cell {

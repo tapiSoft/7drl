@@ -33,30 +33,11 @@ class MovementSystem : public System<MovementSystem> {
 	private:
 		RenderState *renderState;
 		Entity player;
-		Level *level;
+		GameState *state;
 	public:
-		explicit MovementSystem(RenderState *renderState, Entity player, Level *level) : renderState(renderState), player(player), level(level) {}
+		explicit MovementSystem(RenderState *renderState, Entity player, GameState *state) : renderState(renderState), player(player), state(state) {}
 		void update(EntityManager &em, EventManager &evm, TimeDelta) override {
 			if(*renderState == RenderGame) {
-				em.each<Position, Behavior>([&](Entity e, Position &pos, const Behavior &b) {
-					auto newpos = b.movementBehavior(pos);
-					if(level->canMoveTo(newpos.x, newpos.y)) {
-						if(newpos == *player.component<Position>().get()) {
-							auto combat = e.component<Combat>();
-							if(combat) {
-								assert(combat->life > 0);
-								auto dmg = combat->damage.getDamage();
-								evm.emit<ConsoleMessage>("A monster hits you for " + std::to_string(dmg) + " damage.");
-								evm.emit<Collision>(newpos.x, newpos.y);
-							} else {
-								evm.emit<ConsoleMessage>("A lifeless monster bumps into you.");
-								evm.emit<Collision>(newpos.x, newpos.y);
-							}
-						} else {
-							pos = newpos;
-						}
-					}
-				});
 				em.each<Position, Direction>([&](Entity entity, Position &pos, Direction &d) {
 					int destx = pos.x;
 					int desty = pos.y;
@@ -93,7 +74,7 @@ class MovementSystem : public System<MovementSystem> {
 						case None:
 							break;
 					}
-					if(level->canMoveTo(destx, desty)) {
+					if(state->currentLevel.canMoveTo(destx, desty)) {
 						// Check collisions with other entities
 						for(auto e : em.entities_with_components<Position>())
 						{
@@ -126,8 +107,11 @@ class MovementSystem : public System<MovementSystem> {
 
 						pos.x = destx;
 						pos.y = desty;
-						level->refreshFov(pos);
+						state->currentLevel.refreshFov(pos);
 					}
+					em.each<Behavior>([&](Entity e, const Behavior &b) {
+						b.movementBehavior(e, state);
+				});
 				});
 			}
 		}
