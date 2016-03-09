@@ -30,7 +30,9 @@ int main() {
 		TCODSystem::waitForEvent(TCOD_EVENT_KEY_PRESS, &key, 0, false);
 		if(state.handleInput(key))
 		{
-			state.ex.systems.update_all(0);
+			state.ex.systems.update<MovementSystem>(0);
+			state.ex.systems.update<ConsoleSystem>(0);
+			state.ex.systems.update<DebugSystem>(0);
 		}
 		else break;
 	}

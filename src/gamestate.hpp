@@ -42,25 +42,18 @@ class MovementSystem : public System<MovementSystem> {
 					auto newpos = b.movementBehavior(pos);
 					if(level->canMoveTo(newpos.x, newpos.y)) {
 						if(newpos == *player.component<Position>().get()) {
-							auto life = e.component<Life>();
-							if(life) {
-								if(life->amount > 0) {
-									evm.emit<ConsoleMessage>("A monster bumps into you.");
-									evm.emit<Collision>(newpos.x, newpos.y);
-								}
+							auto combat = e.component<Combat>();
+							if(combat) {
+								assert(combat->life > 0);
+								auto dmg = combat->damage.getDamage();
+								evm.emit<ConsoleMessage>("A monster hits you for " + std::to_string(dmg) + " damage.");
+								evm.emit<Collision>(newpos.x, newpos.y);
 							} else {
 								evm.emit<ConsoleMessage>("A lifeless monster bumps into you.");
 								evm.emit<Collision>(newpos.x, newpos.y);
 							}
 						} else {
-							auto life = e.component<Life>();
-							if(life) {
-								if(life->amount > 0) {
-									pos = newpos;
-								}
-							} else {
-								pos = newpos;
-							}
+							pos = newpos;
 						}
 					}
 				});
@@ -106,16 +99,19 @@ class MovementSystem : public System<MovementSystem> {
 						{
 							if(e == entity) continue; // Ignore ourselves
 							auto pos = e.component<Position>().get();
-							auto life = e.component<Life>();
+							auto combat = e.component<Combat>();
 							if(pos->x == destx && pos->y == desty) {
-								if(life)  {
-									if(life->amount > 0) {
+								if(combat)  {
+									if(combat->life > 0) {
 										evm.emit<Collision>(pos->x, pos->y);
-										evm.emit<ConsoleMessage>("You hit the monster in the nose.");
-										life->amount--;
-										if(life->amount == 0) {
+										auto dmg = entity.component<Combat>()->damage.getDamage();
+										evm.emit<ConsoleMessage>("You hit the monster in the nose for " + std::to_string(dmg) + " damage.");
+										if(combat->life <= dmg) {
+											combat->life = 0;
 											evm.emit<ConsoleMessage>("The monster dies...");
+											e.component<Behavior>().remove();
 										}
+										else combat->life -= dmg;
 										return;
 									} else {
 										evm.emit<ConsoleMessage>("There's a dead monster here.");

@@ -13,14 +13,15 @@ GameState::GameState() : render(RenderGame), currentLevel(100, 100) {
 	playerentity = ex.entities.create();
 	playerentity.assign<Model>('@', TCODColor::white);
 	playerentity.assign<Direction>(None);
+	playerentity.assign<Combat>(10, Damage(1,4,1));
 	playerentity.assign<Inventory>(Inventory {
 		{itemList[0]},
 	});
 
 	newLevel();
 
-	ex.systems.add<ConsoleSystem>((uint8_t)GLOBALCONFIG->consoleSize);
 	ex.systems.add<MovementSystem>(&render, playerentity, &currentLevel);
+	ex.systems.add<ConsoleSystem>((uint8_t)GLOBALCONFIG->consoleSize);
 	ex.systems.add<DebugSystem>();
 	ex.systems.configure();
 
@@ -37,7 +38,7 @@ GameState::GameState() : render(RenderGame), currentLevel(100, 100) {
 		} while(!currentLevel.canMoveTo(x, y));
 		monster.assign<Position>(Position {x, y});
 		monster.assign<Behavior>(Behavior {[](Position pos) { pos.x += random(-1, 1); pos.y += random(-1, 1); return pos;}});
-		monster.assign<Life>(Life {4});
+		monster.assign<Combat>(10, Damage(1, 4, 1));
 	}
 }
 
@@ -122,10 +123,10 @@ void GameState::renderState() {
 			TCODColor originalcolor = TCODConsole::root->getDefaultForeground();
 			ex.entities.each<const Position, const Model>([&](Entity e, const Position &position, const Model &model) {
 				if(currentLevel.map.isInFov(position.x, position.y)) {
-					auto life = e.component<Life>();
+					auto combat = e.component<Combat>();
 					auto color = model.color;
-					if(life) {
-						if(life->amount == 0) {
+					if(combat) {
+						if(combat->life == 0) {
 							color = TCODColor::darkRed;
 						}
 					}

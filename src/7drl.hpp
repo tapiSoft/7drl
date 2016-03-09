@@ -42,9 +42,25 @@ struct Model
 	Model(char character, TCODColor color) : character(character), color(color) {}
 };
 
-struct Life
+struct Damage {
+	uint8_t numrolls;
+	uint8_t dicesize;
+	int8_t bonus;
+	uint16_t getDamage() {
+		uint16_t ret = 0;
+		for (uint8_t i = 0; i < numrolls; i++)
+			ret += random<int>(1, dicesize);
+		if(-bonus > (int)ret) return 0;
+		return ret+bonus;
+	}
+	Damage(uint8_t numrolls, uint8_t dicesize, int8_t bonus) : numrolls(numrolls), dicesize(dicesize), bonus(bonus) {}
+};
+
+struct Combat
 {
-	uint8_t amount;
+	uint8_t life;
+	Damage damage;
+	Combat(uint8_t maxlife, Damage damage) : life(maxlife), damage(damage) {}
 };
 
 struct Item
