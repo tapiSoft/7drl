@@ -42,6 +42,11 @@ struct Model
 	Model(char character, TCODColor color) : character(character), color(color) {}
 };
 
+struct Life
+{
+	uint8_t amount;
+};
+
 struct Item
 {
 	std::string name;

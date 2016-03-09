@@ -19,9 +19,9 @@ GameState::GameState() : render(RenderGame), currentLevel(100, 100) {
 
 	newLevel();
 
+	ex.systems.add<ConsoleSystem>((uint8_t)GLOBALCONFIG->consoleSize);
 	ex.systems.add<MovementSystem>(playerentity, &currentLevel);
 	ex.systems.add<DebugSystem>();
-	ex.systems.add<ConsoleSystem>((uint8_t)GLOBALCONFIG->consoleSize);
 	ex.systems.configure();
 
 	for(auto i=0; i<4; ++i)
@@ -37,6 +37,7 @@ GameState::GameState() : render(RenderGame), currentLevel(100, 100) {
 		} while(!currentLevel.canMoveTo(x, y));
 		monster.assign<Position>(Position {x, y});
 		monster.assign<Behavior>(Behavior {[](Position pos) { pos.x += random(-1, 1); pos.y += random(-1, 1); return pos;}});
+		monster.assign<Life>(Life {4});
 	}
 }
 
@@ -117,12 +118,25 @@ void GameState::renderState() {
 
 			currentLevel.draw(xoffset, yoffset, screenwidth, screenheight);
 			TCODColor originalcolor = TCODConsole::root->getDefaultForeground();
-			ex.entities.each<const Position, const Model>([&](const Entity&, const Position &position, const Model &model) {
+			ex.entities.each<const Position, const Model>([&](Entity e, const Position &position, const Model &model) {
 				if(currentLevel.map.isInFov(position.x, position.y)) {
-					TCODConsole::root->setDefaultForeground(model.color);
+					auto life = e.component<Life>();
+					auto color = model.color;
+					if(life) {
+						if(life->amount == 0) {
+							color = TCODColor::darkRed;
+						}
+					}
+					TCODConsole::root->setDefaultForeground(color);
 					TCODConsole::root->putChar(position.x-xoffset, position.y-yoffset, model.character);
 				}
 			});
+
+			TCODConsole::root->setDefaultForeground(originalcolor);
+			auto playerpos = playerentity.component<Position>().get();
+			auto playermodel = playerentity.component<Model>().get();
+			TCODConsole::root->putChar(playerpos->x-xoffset, playerpos->y-yoffset, playermodel->character);
+
 			TCODConsole::root->setDefaultForeground(originalcolor);
 			auto &messageconsole = ex.systems.system<ConsoleSystem>()->GetConsole();
 			TCODConsole::blit(&messageconsole, 0, 0, GLOBALCONFIG->width, GLOBALCONFIG->consoleSize, TCODConsole::root, 0, GLOBALCONFIG->height-GLOBALCONFIG->consoleSize);

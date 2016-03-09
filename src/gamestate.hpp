@@ -36,13 +36,30 @@ class MovementSystem : public System<MovementSystem> {
 	public:
 		explicit MovementSystem(Entity player, Level *level) : player(player), level(level) {}
 		void update(EntityManager &em, EventManager &evm, TimeDelta) override {
-			em.each<Position, Behavior>([&](Entity, Position &pos, const Behavior &b) {
+			em.each<Position, Behavior>([&](Entity e, Position &pos, const Behavior &b) {
 				auto newpos = b.movementBehavior(pos);
 				if(level->canMoveTo(newpos.x, newpos.y)) {
 					if(newpos == *player.component<Position>().get()) {
-						evm.emit<ConsoleMessage>("A monster bumps into you.");
-						evm.emit<Collision>(newpos.x, newpos.y);
-					} else pos = newpos;
+						auto life = e.component<Life>();
+						if(life) {
+							if(life->amount > 0) {
+								evm.emit<ConsoleMessage>("A monster bumps into you.");
+								evm.emit<Collision>(newpos.x, newpos.y);
+							}
+						} else {
+							evm.emit<ConsoleMessage>("A lifeless monster bumps into you.");
+							evm.emit<Collision>(newpos.x, newpos.y);
+						}
+					} else {
+						auto life = e.component<Life>();
+						if(life) {
+							if(life->amount > 0) {
+								pos = newpos;
+							}
+						} else {
+							pos = newpos;
+						}
+					}
 				}
 			});
 			em.each<Position, Direction>([&](Entity entity, Position &pos, Direction &d) {
@@ -87,10 +104,25 @@ class MovementSystem : public System<MovementSystem> {
 					{
 						if(e == entity) continue; // Ignore ourselves
 						auto pos = e.component<Position>().get();
+						auto life = e.component<Life>();
 						if(pos->x == destx && pos->y == desty) {
-							evm.emit<Collision>(pos->x, pos->y);
-							evm.emit<ConsoleMessage>("You bump into a monster.");
-							return;
+							if(life)  {
+								if(life->amount > 0) {
+									evm.emit<Collision>(pos->x, pos->y);
+									evm.emit<ConsoleMessage>("You hit the monster in the nose.");
+									life->amount--;
+									if(life->amount == 0) {
+										evm.emit<ConsoleMessage>("The monster dies...");
+									}
+									return;
+								} else {
+									evm.emit<ConsoleMessage>("There's a dead monster here.");
+								}
+							} else {
+								evm.emit<Collision>(pos->x, pos->y);
+								evm.emit<ConsoleMessage>("You bump into a lifeless thing.");
+								return;
+							}
 						}
 					}
 
@@ -120,9 +152,10 @@ class ConsoleSystem : public System<ConsoleSystem>, public Receiver<ConsoleSyste
 	public:
 		explicit ConsoleSystem(uint8_t buffersize) : bufferSize(buffersize), messageConsole(GLOBALCONFIG->width, buffersize) {}
 		void configure(EventManager &evm) override {
+			evm.subscribe<ConsoleMessage>(*this);
 			messageConsole.setDefaultBackground(TCODColor::darkestGrey);
 			messageConsole.setDefaultForeground(TCODColor::white);
-			evm.subscribe<ConsoleMessage>(*this);
+			messageConsole.clear();
 		}
 		void update(EntityManager &, EventManager &, TimeDelta) override {
 			messageConsole.clear();
