@@ -28,7 +28,7 @@ struct GameState
 	void renderState();
 	void newLevel();
 	void createMonster();
-	void createMonster(uint16_t, uint16_t);
+	void createMonster(uint16_t, uint16_t, bool friendly);
 	void moveEntity(Position oldpos, Position newpos) {
 		currentLevel.setEntityPresent(oldpos, false);
 		currentLevel.setEntityPresent(newpos, true);

@@ -71,9 +71,9 @@ struct Inventory
 struct GameState;
 struct Behavior
 {
-	bool seenPlayer;
+	bool friendlyToPlayer : 1;
 	std::function<void(entityx::Entity, GameState*)> movementBehavior;
-	Behavior(std::function<void(entityx::Entity, GameState*)> movementBehavior) : seenPlayer(false), movementBehavior(movementBehavior) {}
+	Behavior(std::function<void(entityx::Entity, GameState*)> movementBehavior, bool friendlyToPlayer) : movementBehavior(movementBehavior), friendlyToPlayer(friendlyToPlayer) {}
 };
 
 struct Cell {

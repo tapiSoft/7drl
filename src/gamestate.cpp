@@ -10,39 +10,44 @@ const TCODColor Level::COLOR_DARK_GROUND = TCODColor(50, 50, 150);
 const TCODColor Level::COLOR_LIGHT_GROUND = TCODColor(200, 180, 50);
 const TCODColor Level::COLORS[] = { Level::COLOR_DARK_GROUND, Level::COLOR_DARK_WALL, Level::COLOR_LIGHT_GROUND, Level::COLOR_LIGHT_WALL};
 
-void monsterMovement(entityx::Entity e, GameState *state) {
+void moveMonsterTo(Entity e, Position newpos, GameState *state) {
+	if(state->currentLevel.canMoveTo(newpos)) {
+		auto pos = e.component<Position>().get();
+		state->moveEntity(*pos, newpos);
+		*pos = newpos;
+	}
+}
+
+void monsterAggroMovement(entityx::Entity e, GameState *state) {
 	Position playerpos = *state->playerentity.component<Position>().get();
 	Position newpos = *e.component<Position>().get();
-	if(e.component<Behavior>()->seenPlayer) { // Attack the player! (TODO : could maybe cache the path or something)
-		TCODPath path(&state->currentLevel.map);
-		path.compute(newpos.x, newpos.y, playerpos.x, playerpos.y);
-		int newx, newy;
-		path.walk(&newx, &newy, false);
-		newpos.x = newx; newpos.y = newy;
-	}
-	else { // Wander around aimlessly
-		if(random(0, 1)) newpos.x += random(0, 1) ? 1 : -1;
-		else newpos.y += random(0, 1) ? 1 : -1;
-	}
-	if(state->currentLevel.canMoveTo(newpos)) { // TODO : what about monster-monster collisions
-		if(newpos == playerpos) {
-			if(e.has_component<Combat>()) {
-				auto combat = e.component<Combat>();
-				assert(combat->life > 0);
-				auto dmg = combat->damage.getDamage();
+	TCODPath path(&state->currentLevel.map);
+	path.compute(newpos.x, newpos.y, playerpos.x, playerpos.y);
+	int newx, newy;
+	path.walk(&newx, &newy, false);
+	newpos.x = newx; newpos.y = newy;
+	if(newpos == playerpos) {
+		if(e.has_component<Combat>()) {
+			auto combat = e.component<Combat>();
+			assert(combat->life > 0);
+			auto dmg = combat->damage.getDamage();
 
-				state->ex.events.emit<ConsoleMessage>("A monster hits you for " + std::to_string(dmg) + " damage.");
-				state->ex.events.emit<Collision>(newpos.x, newpos.y);
-			} else {
-				state->ex.events.emit<ConsoleMessage>("A lifeless monster bumps into you.");
-				state->ex.events.emit<Collision>(newpos.x, newpos.y);
-			}
-		} else {
-			auto pos = e.component<Position>().get();
-			state->moveEntity(*pos, newpos);
-			*pos = newpos;
+			state->ex.events.emit<ConsoleMessage>("A monster hits you for " + std::to_string(dmg) + " damage.");
+			state->ex.events.emit<Collision>(newpos.x, newpos.y);
+		}
+		else {
+			state->ex.events.emit<ConsoleMessage>("A lifeless monster bumps into you.");
+			state->ex.events.emit<Collision>(newpos.x, newpos.y);
 		}
 	}
+	else moveMonsterTo(e, newpos, state);
+}
+
+void monsterRandomMovement(entityx::Entity e, GameState *state) {
+	Position playerpos = *state->playerentity.component<Position>().get();
+	Position newpos = *e.component<Position>().get();
+	if(random(0, 1)) newpos.x += random(0, 1) ? 1 : -1;
+	else newpos.y += random(0, 1) ? 1 : -1;
 }
 
 
@@ -78,62 +83,26 @@ GameState::GameState() : render(RenderGame), currentLevel(100, 100) {
 			auto emit_if_zero = random(0, 5);
 			if(emit_if_zero == 0) {
 				auto direction = random(1, 8);
-				uint16_t destx, desty;
-
-				// TODO: This is horrible :D
-				if(direction == 1) {
-					destx = epos->x-1;
-					desty = epos->y-1;
-				} else if(direction == 2) {
-					destx = epos->x;
-					desty = epos->y-1;
-				} else if(direction == 3) {
-					destx = epos->x+1;
-					desty = epos->y-1;
-				} else if(direction == 4) {
-					destx = epos->x-1;
-					desty = epos->y;
-				} else if(direction == 5) {
-					destx = epos->x+1;
-					desty = epos->y;
-				} else if(direction == 6) {
-					destx = epos->x-1;
-					desty = epos->y+1;
-				} else if(direction == 7) {
-					destx = epos->x;
-					desty = epos->y+1;
-				} else {
-					destx = epos->x+1;
-					desty = epos->y+1;
-				}
-				if(state->currentLevel.canMoveTo(Position(destx, desty))) {
-					for(auto e : ex.entities.entities_with_components<Position>())
-					{
-						auto pos = e.component<Position>().get();
-						if(pos->x == destx && pos->y == desty) return;
-					}
-					createMonster(destx, desty);
+				int8_t dx, dy;
+				do {
+					dx = random(-1, 1);
+					dy = random(-1, 1);
+				} while(dx == 0 && dy == 0);
+				Position dest(epos->x + dx, epos->y + dy);
+				if(state->currentLevel.canMoveTo(dest)) {
+					createMonster(dest.x, dest.y, emitter.component<Behavior>()->friendlyToPlayer);
 				}
 			}
-		}));
+		}, false));
 	}
 }
 
-void GameState::createMonster() {
-	uint16_t x, y;
-	do {
-		// TODO: Better randomization
-		x = random(1, currentLevel.width);
-		y = random(1, currentLevel.height);
-	} while(!currentLevel.canMoveTo(Position(x, y)));
-	createMonster(x, y);
-}
-void GameState::createMonster(uint16_t x, uint16_t y) {
+void GameState::createMonster(uint16_t x, uint16_t y, bool friendly) {
 	auto monster = ex.entities.create();
 	monster.assign<Model>('m', TCODColor::darkerPurple);
 	monster.assign<Inventory>(Inventory {{itemList[0]}});
 	monster.assign<Position>(Position {x, y});
-	monster.assign<Behavior>(monsterMovement);
+	monster.assign<Behavior>(monsterRandomMovement, friendly);
 	monster.assign<Combat>(10, Damage(1, 4, 1));
 }
 
@@ -219,8 +188,8 @@ void GameState::renderState() {
 							color = TCODColor::darkRed;
 						}
 						else {
-							if(e.has_component<Behavior>() && !e.component<Behavior>()->seenPlayer) {
-								e.component<Behavior>()->seenPlayer = true;
+							if(e.has_component<Behavior>()) {
+								e.component<Behavior>()->movementBehavior = monsterAggroMovement;
 								ex.events.emit<ConsoleMessage>("The monster notices you and becomes angry!");
 							}
 						}
