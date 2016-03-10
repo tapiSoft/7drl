@@ -29,6 +29,11 @@ struct GameState
 	void newLevel();
 	void createMonster();
 	void createMonster(uint16_t, uint16_t);
+	void moveEntity(Position oldpos, Position newpos) {
+		currentLevel.setEntityPresent(oldpos, false);
+		currentLevel.setEntityPresent(newpos, true);
+	}
+	Entity findEntityAt(Position);
 };
 
 class MovementSystem : public System<MovementSystem> {
@@ -40,81 +45,39 @@ class MovementSystem : public System<MovementSystem> {
 		explicit MovementSystem(RenderState *renderState, Entity player, GameState *state) : renderState(renderState), player(player), state(state) {}
 		void update(EntityManager &em, EventManager &evm, TimeDelta) override {
 			if(*renderState == RenderGame) {
-				em.each<Position, Direction>([&](Entity entity, Position &pos, Direction &d) {
-					int destx = pos.x;
-					int desty = pos.y;
-					auto amount = 1;
-					switch(d) {
-						case UpRight:
-							destx += amount;
-							desty -= amount;
-							break;
-						case UpLeft:
-							destx -= amount;
-							desty -= amount;
-							break;
-						case Up:
-							desty -= amount;
-							break;
-						case Right:
-							destx += amount;
-							break;
-						case DownRight:
-							destx += amount;
-							desty += amount;
-							break;
-						case Down:
-							desty += amount;
-							break;
-						case DownLeft:
-							destx -= amount;
-							desty += amount;
-							break;
-						case Left:
-							destx -= amount;
-							break;
-						case None:
-							break;
-					}
-					if(state->currentLevel.canMoveTo(destx, desty)) {
-						// Check collisions with other entities
-						for(auto e : em.entities_with_components<Position>())
-						{
-							if(e == entity) continue; // Ignore ourselves
-							auto pos = e.component<Position>().get();
-							auto combat = e.component<Combat>();
-							if(pos->x == destx && pos->y == desty) {
-								if(combat)  {
-									if(combat->life > 0) {
-										evm.emit<Collision>(pos->x, pos->y);
-										auto dmg = entity.component<Combat>()->damage.getDamage();
-										evm.emit<ConsoleMessage>("You hit the monster in the nose for " + std::to_string(dmg) + " damage.");
-										if(combat->life <= dmg) {
-											combat->life = 0;
-											evm.emit<ConsoleMessage>("The monster dies...");
-											e.component<Behavior>().remove();
-										}
-										else combat->life -= dmg;
-										return;
-									} else {
-										evm.emit<ConsoleMessage>("There's a dead monster here.");
-									}
-								} else {
-									evm.emit<Collision>(pos->x, pos->y);
-									evm.emit<ConsoleMessage>("You bump into a lifeless thing.");
-									return;
-								}
-							}
+				Direction d = *player.component<Direction>().get();
+				Position newpos = *player.component<Position>().get();
+				newpos.x += d.dx;
+				newpos.y += d.dy;
+				if(state->currentLevel.canMoveTo(newpos)) {
+					state->moveEntity(*player.component<Position>().get(), newpos);
+					*player.component<Position>().get() = newpos;
+				}
+				else if(state->currentLevel.entityPresent(newpos)) { // combat
+					Entity e = state->findEntityAt(newpos);
+					if(e.has_component<Combat>())  {
+						auto combat = e.component<Combat>();
+						evm.emit<Collision>(newpos.x, newpos.y);
+						auto dmg = player.component<Combat>()->damage.getDamage();
+						evm.emit<ConsoleMessage>("You hit the monster in the nose for " + std::to_string(dmg) + " damage.");
+						if(combat->life <= dmg) {
+							combat->life = 0;
+							evm.emit<ConsoleMessage>("The monster dies...");
+							e.component<Behavior>().remove();
+							e.component<Combat>().remove();
+							state->currentLevel.setEntityPresent(newpos, false);
 						}
-
-						pos.x = destx;
-						pos.y = desty;
-						state->currentLevel.refreshFov(pos);
+						else combat->life -= dmg;
+					} else {
+						evm.emit<ConsoleMessage>("There's a dead monster here."); // TODO
 					}
-					em.each<Behavior>([&](Entity e, const Behavior &b) {
-						b.movementBehavior(e, state);
-					});
+				}
+
+				// Should wake up monsters here
+				em.each<Behavior>([&](Entity e, const Behavior &b) {
+					b.movementBehavior(e, state);
 				});
+				state->currentLevel.refreshFov(*player.component<Position>().get());
 			}
 		}
 };

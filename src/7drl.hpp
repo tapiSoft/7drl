@@ -24,16 +24,10 @@ struct Position
 
 typedef Position Collision;
 
-enum Direction {
-	Up,
-	Right,
-	Down,
-	Left,
-	UpRight,
-	UpLeft,
-	DownRight,
-	DownLeft,
-	None
+struct Direction {
+	int16_t dx;
+	int16_t dy;
+	Direction(int16_t dx, int16_t dy) : dx(dx), dy(dy) {}
 };
 
 struct Model
@@ -83,6 +77,7 @@ struct Behavior
 };
 
 struct Cell {
+	bool entitypresent : 1;
 	bool visible : 1;
 	bool explored : 1;
 	bool notwall : 1;
@@ -184,18 +179,31 @@ struct Level {
 	void refreshFov(Position pos) {
 		map.computeFov(pos.x, pos.y, 3);
 	}
-	bool canMoveTo(int x, int y, int radius=0) {
+	void setEntityPresent(Position p, bool value) {
+		auto i = p.y*width + p.x;
+		assert(p.x < width && p.y < height);
+		celldata[i].entitypresent = value;
+	}
+	bool entityPresent(Position p) {
+		auto i = p.y*width + p.x;
+		if (p.x < width && p.x >= 0 && p.y < height && p.y >= 0)
+			return celldata[i].entitypresent;
+		return false;
+	}
+	bool canMoveTo(Position p, int radius=0) {
 		if(radius == 0) {
-			if(x < width && x >= 0 && y < height && y >= 0)
-				return celldata[y*width + x].notwall;
+			auto i = p.y*width + p.x;
+			if(p.x < width && p.x >= 0 && p.y < height && p.y >= 0)
+				return celldata[i].notwall && !celldata[i].entitypresent;
 			return false;
 		} else {
 			for(auto i=-radius; i<=radius; ++i)
 			{
 				for(auto j=-radius; j<=radius; ++j)
 				{
-					if(x+i < width && x+i >=0 && y+j < height && y+j >= 0) {
-						if(!celldata[(y+j)*width + x+i].notwall) return false;
+					auto cell = (p.y + j)*width + p.x + i;
+					if(p.x+i < width && p.x+i >=0 && p.y+j < height && p.y+j >= 0) {
+						if(!celldata[cell].notwall || celldata[cell].entitypresent) return false;
 					}
 				}
 			}

@@ -24,10 +24,10 @@ void monsterMovement(entityx::Entity e, GameState *state) {
 		if(random(0, 1)) newpos.x += random(0, 1) ? 1 : -1;
 		else newpos.y += random(0, 1) ? 1 : -1;
 	}
-	if(state->currentLevel.canMoveTo(newpos.x, newpos.y)) { // TODO : what about monster-monster collisions
+	if(state->currentLevel.canMoveTo(newpos)) { // TODO : what about monster-monster collisions
 		if(newpos == playerpos) {
-			auto combat = e.component<Combat>();
-			if(combat) {
+			if(e.has_component<Combat>()) {
+				auto combat = e.component<Combat>();
 				assert(combat->life > 0);
 				auto dmg = combat->damage.getDamage();
 
@@ -38,8 +38,9 @@ void monsterMovement(entityx::Entity e, GameState *state) {
 				state->ex.events.emit<Collision>(newpos.x, newpos.y);
 			}
 		} else {
-			e.component<Position>()->x = newpos.x;
-			e.component<Position>()->y = newpos.y;
+			auto pos = e.component<Position>().get();
+			state->moveEntity(*pos, newpos);
+			*pos = newpos;
 		}
 	}
 }
@@ -48,7 +49,7 @@ void monsterMovement(entityx::Entity e, GameState *state) {
 GameState::GameState() : render(RenderGame), currentLevel(100, 100) {
 	playerentity = ex.entities.create();
 	playerentity.assign<Model>('@', TCODColor::white);
-	playerentity.assign<Direction>(None);
+	playerentity.assign<Direction>(0,0);
 	playerentity.assign<Combat>(10, Damage(1,4,1));
 	playerentity.assign<Inventory>(Inventory {
 		{itemList[0]},
@@ -70,7 +71,7 @@ GameState::GameState() : render(RenderGame), currentLevel(100, 100) {
 			// TODO: Better randomization
 			x = random(1, currentLevel.width);
 			y = random(1, currentLevel.height);
-		} while(!currentLevel.canMoveTo(x, y, 1));
+		} while(!currentLevel.canMoveTo(Position(x, y), 1));
 		monsterEmitter.assign<Position>(Position {x, y});
 		monsterEmitter.assign<Behavior>(Behavior([&](Entity emitter, GameState *state) {
 			auto epos = emitter.component<Position>().get();
@@ -105,7 +106,7 @@ GameState::GameState() : render(RenderGame), currentLevel(100, 100) {
 					destx = epos->x+1;
 					desty = epos->y+1;
 				}
-				if(state->currentLevel.canMoveTo(destx, desty)) {
+				if(state->currentLevel.canMoveTo(Position(destx, desty))) {
 					for(auto e : ex.entities.entities_with_components<Position>())
 					{
 						auto pos = e.component<Position>().get();
@@ -124,7 +125,7 @@ void GameState::createMonster() {
 		// TODO: Better randomization
 		x = random(1, currentLevel.width);
 		y = random(1, currentLevel.height);
-	} while(!currentLevel.canMoveTo(x, y));
+	} while(!currentLevel.canMoveTo(Position(x, y)));
 	createMonster(x, y);
 }
 void GameState::createMonster(uint16_t x, uint16_t y) {
@@ -140,6 +141,8 @@ void GameState::createMonster(uint16_t x, uint16_t y) {
 bool GameState::handleInput(TCOD_key_t key) {
 	if(key.pressed)
 	{
+		auto dir = playerentity.component<Direction>().get();
+		*dir = Direction(0, 0);
 		switch (key.vk) {
 		// TODO: Do we want to support arrow keys?
 		/*
@@ -159,14 +162,10 @@ bool GameState::handleInput(TCOD_key_t key) {
 		case TCODK_TAB:
 			if(!GLOBALCONFIG->keybindings.inventory) {
 				toggleInventory();
-				auto dir = playerentity.component<Direction>().get();
-				*dir = None;
 			}
 			break;
 		case TCODK_SPACE:
 			if(!GLOBALCONFIG->keybindings.idle) {
-				auto dir = playerentity.component<Direction>().get();
-				*dir = None;
 				break;
 			}
 			break;
@@ -175,19 +174,15 @@ bool GameState::handleInput(TCOD_key_t key) {
 		case TCODK_CHAR:
 			if(this->render == RenderGame)
 			{
-				auto dir = playerentity.component<Direction>().get();
-				if(key.c == GLOBALCONFIG->keybindings.upleft) *dir = UpLeft;
-				else if(key.c == GLOBALCONFIG->keybindings.up) *dir = Up;
-				else if(key.c == GLOBALCONFIG->keybindings.upright) *dir = UpRight;
-				else if(key.c == GLOBALCONFIG->keybindings.right) *dir = Right;
-				else if(key.c == GLOBALCONFIG->keybindings.downright) *dir = DownRight;
-				else if(key.c == GLOBALCONFIG->keybindings.down) *dir = Down;
-				else if(key.c == GLOBALCONFIG->keybindings.downleft) *dir = DownLeft;
-				else if(key.c == GLOBALCONFIG->keybindings.left) *dir = Left;
-				else {
-					*dir = None;
-					break;
-				}
+				if(key.c == GLOBALCONFIG->keybindings.upleft || key.c == GLOBALCONFIG->keybindings.downleft || key.c == GLOBALCONFIG->keybindings.left)
+					dir->dx = -1;
+				else if(key.c == GLOBALCONFIG->keybindings.upright || key.c == GLOBALCONFIG->keybindings.downright || key.c == GLOBALCONFIG->keybindings.right)
+					dir->dx = 1;
+
+				if(key.c == GLOBALCONFIG->keybindings.upleft || key.c == GLOBALCONFIG->keybindings.up || key.c == GLOBALCONFIG->keybindings.upright)
+					dir->dy = -1;
+				else if(key.c == GLOBALCONFIG->keybindings.downright || key.c == GLOBALCONFIG->keybindings.downleft || key.c == GLOBALCONFIG->keybindings.down)
+					dir->dy = 1;
 			}
 			else if(key.c == GLOBALCONFIG->keybindings.inventory) toggleInventory();
 		default:
@@ -276,4 +271,13 @@ void GameState::renderState() {
 void GameState::newLevel() {
 	currentLevel.generate();
 	playerentity.replace<Position>(currentLevel.initialpos);
+}
+
+Entity GameState::findEntityAt(Position p) {
+	ComponentHandle<Position> position;
+	ComponentHandle<Combat> combat;
+	for (Entity e : ex.entities.entities_with_components(position, combat))
+		if(*position.get() == p)
+			return e;
+	assert(false);
 }
