@@ -53,6 +53,8 @@ class MovementSystem : public System<MovementSystem> {
 					if(state->currentLevel.canMoveTo(newpos)) {
 						state->moveEntity(*player.component<Position>().get(), newpos);
 						*player.component<Position>().get() = newpos;
+						if(state->currentLevel.itemPresent(newpos))
+							evm.emit<ConsoleMessage>("There's a dead monster here.");
 					}
 					else if(state->currentLevel.entityPresent(newpos)) { // combat
 						Entity e;
@@ -66,12 +68,13 @@ class MovementSystem : public System<MovementSystem> {
 								evm.emit<ConsoleMessage>("The monster dies...");
 								e.component<Behavior>().remove();
 								e.component<Combat>().remove();
+								state->currentLevel.setItemPresent(newpos, true);
 								state->currentLevel.setEntityPresent(newpos, false);
 							}
 							else combat->life -= dmg;
 						}
 						else {
-							evm.emit<ConsoleMessage>("There's a dead monster here."); // TODO
+							// WutFace
 						}
 					}
 				}

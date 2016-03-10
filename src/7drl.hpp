@@ -77,6 +77,7 @@ struct Behavior
 };
 
 struct Cell {
+	bool itempresent : 1;
 	bool entitypresent : 1;
 	bool visible : 1;
 	bool explored : 1;
@@ -179,6 +180,11 @@ struct Level {
 	void refreshFov(Position pos) {
 		map.computeFov(pos.x, pos.y, 3);
 	}
+	void setItemPresent(Position p, bool value) {
+		auto i = p.y*width + p.x;
+		assert(p.x < width && p.y < height);
+		celldata[i].itempresent = value;
+	}
 	void setEntityPresent(Position p, bool value) {
 		auto i = p.y*width + p.x;
 		assert(p.x < width && p.y < height);
@@ -188,6 +194,12 @@ struct Level {
 		auto i = p.y*width + p.x;
 		if (p.x < width && p.x >= 0 && p.y < height && p.y >= 0)
 			return celldata[i].entitypresent;
+		return false;
+	}
+	bool itemPresent(Position p) {
+		auto i = p.y*width + p.x;
+		if (p.x < width && p.x >= 0 && p.y < height && p.y >= 0)
+			return celldata[i].itempresent;
 		return false;
 	}
 	bool canMoveTo(Position p, int radius=0) {
