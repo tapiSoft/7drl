@@ -24,24 +24,24 @@ void monsterMovement(entityx::Entity e, GameState *state) {
 		if(random(0, 1)) newpos.x += random(0, 1) ? 1 : -1;
 		else newpos.y += random(0, 1) ? 1 : -1;
 	}
-	if(state->currentLevel.canMoveTo(newpos)) { // TODO : what about monster-monster collisions
-		if(newpos == playerpos) {
-			if(e.has_component<Combat>()) {
-				auto combat = e.component<Combat>();
-				assert(combat->life > 0);
-				auto dmg = combat->damage.getDamage();
+	if(newpos == playerpos) {
+		if(e.has_component<Combat>()) {
+			auto combat = e.component<Combat>();
+			assert(combat->life > 0);
+			auto dmg = combat->damage.getDamage();
 
-				state->ex.events.emit<ConsoleMessage>("A monster hits you for " + std::to_string(dmg) + " damage.");
-				state->ex.events.emit<Collision>(newpos.x, newpos.y);
-			} else {
-				state->ex.events.emit<ConsoleMessage>("A lifeless monster bumps into you.");
-				state->ex.events.emit<Collision>(newpos.x, newpos.y);
-			}
+			state->playerentity.component<Combat>()->life -= dmg;
+
+			state->ex.events.emit<ConsoleMessage>("A monster hits you for " + std::to_string(dmg) + " damage.");
+			state->ex.events.emit<Collision>(newpos.x, newpos.y);
 		} else {
-			auto pos = e.component<Position>().get();
-			state->moveEntity(*pos, newpos);
-			*pos = newpos;
+			state->ex.events.emit<ConsoleMessage>("A lifeless monster bumps into you.");
+			state->ex.events.emit<Collision>(newpos.x, newpos.y);
 		}
+	} else if(state->currentLevel.canMoveTo(newpos)) { // TODO : what about monster-monster collisions
+		auto pos = e.component<Position>().get();
+		state->moveEntity(*pos, newpos);
+		*pos = newpos;
 	}
 }
 
@@ -50,7 +50,7 @@ GameState::GameState() : render(RenderGame), currentLevel(100, 100), playerStatu
 	playerentity = ex.entities.create();
 	playerentity.assign<Model>('@', TCODColor::white);
 	playerentity.assign<Direction>(0,0);
-	playerentity.assign<Combat>(10, Damage(1,4,1));
+	playerentity.assign<Combat>(100, Damage(1,4,1));
 	playerentity.assign<Inventory>(Inventory {
 		{itemList[0]},
 	});
@@ -237,6 +237,7 @@ void GameState::renderState() {
 			TCODConsole::root->putChar(playerpos->x-xoffset, playerpos->y-yoffset, playermodel->character);
 
 			playerStatusConsole.setDefaultForeground(originalcolor);
+			playerStatusConsole.clear();
 			playerStatusConsole.print(0, 0, "Health: %d", playerentity.component<Combat>().get()->life);
 			TCODConsole::blit(&playerStatusConsole, 0, 0, GLOBALCONFIG->width, 1, TCODConsole::root, 0, GLOBALCONFIG->height-GLOBALCONFIG->consoleSize-1);
 
