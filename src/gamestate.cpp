@@ -18,14 +18,26 @@ void moveMonsterTo(Entity e, Position newpos, GameState *state) {
 	}
 }
 
+Position getNextStepTowards(const TCODMap& map, Position src, Position dst) {
+	TCODPath path(&map);
+	path.compute(src.x, src.y, dst.x, dst.y);
+	int newx, newy;
+	path.walk(&newx, &newy, false);
+	return Position(newx, newy);
+}
+
+void monsterFriendlyMovement(entityx::Entity e, GameState *state) {
+	Position playerpos = *state->playerentity.component<Position>().get();
+	Position newpos = *e.component<Position>().get();
+	newpos = getNextStepTowards(state->currentLevel.map, newpos, playerpos);
+	if(newpos != playerpos) // TODO : attack other monsters
+		moveMonsterTo(e, newpos, state);
+}
+
 void monsterAggroMovement(entityx::Entity e, GameState *state) {
 	Position playerpos = *state->playerentity.component<Position>().get();
 	Position newpos = *e.component<Position>().get();
-	TCODPath path(&state->currentLevel.map);
-	path.compute(newpos.x, newpos.y, playerpos.x, playerpos.y);
-	int newx, newy;
-	path.walk(&newx, &newy, false);
-	newpos.x = newx; newpos.y = newy;
+	newpos = getNextStepTowards(state->currentLevel.map, newpos, playerpos);
 	if(newpos == playerpos) {
 		if(e.has_component<Combat>()) {
 			auto combat = e.component<Combat>();
@@ -55,7 +67,7 @@ GameState::GameState() : render(RenderGame), currentLevel(100, 100), playerStatu
 	playerentity = ex.entities.create();
 	playerentity.assign<Model>('@', TCODColor::white);
 	playerentity.assign<Direction>(0,0);
-	playerentity.assign<Combat>(100, Damage(1,4,1));
+	playerentity.assign<Combat>(100, Damage(1,4,1), PLAYER);
 	playerentity.assign<Inventory>(Inventory {
 		{itemList[0]},
 	});
@@ -78,11 +90,11 @@ GameState::GameState() : render(RenderGame), currentLevel(100, 100), playerStatu
 			y = random(1, currentLevel.height);
 		} while(!currentLevel.canMoveTo(Position(x, y), 1));
 		monsterEmitter.assign<Position>(Position {x, y});
+		monsterEmitter.assign<Combat>(50, Damage(0, 0, 0), i == 0 ? PLAYER : HOSTILE);
 		monsterEmitter.assign<Behavior>(Behavior([&](Entity emitter, GameState *state) {
 			auto epos = emitter.component<Position>().get();
 			auto emit_if_zero = random(0, 5);
 			if(emit_if_zero == 0) {
-				auto direction = random(1, 8);
 				int8_t dx, dy;
 				do {
 					dx = random(-1, 1);
@@ -90,20 +102,20 @@ GameState::GameState() : render(RenderGame), currentLevel(100, 100), playerStatu
 				} while(dx == 0 && dy == 0);
 				Position dest(epos->x + dx, epos->y + dy);
 				if(state->currentLevel.canMoveTo(dest)) {
-					createMonster(dest.x, dest.y, emitter.component<Behavior>()->friendlyToPlayer);
+					createMonster(dest.x, dest.y, emitter.component<Combat>()->team);
 				}
 			}
-		}, false));
+		}));
 	}
 }
 
-void GameState::createMonster(uint16_t x, uint16_t y, bool friendly) {
+void GameState::createMonster(uint16_t x, uint16_t y, uint8_t team) {
 	auto monster = ex.entities.create();
 	monster.assign<Model>('m', TCODColor::darkerPurple);
 	monster.assign<Inventory>(Inventory {{itemList[0]}});
 	monster.assign<Position>(Position {x, y});
-	monster.assign<Behavior>(monsterRandomMovement, friendly);
-	monster.assign<Combat>(10, Damage(1, 4, 1));
+	monster.assign<Behavior>(monsterRandomMovement);
+	monster.assign<Combat>(10, Damage(1, 4, 1), team);
 }
 
 // Returns false if game should exit
@@ -189,7 +201,8 @@ void GameState::renderState() {
 						}
 						else {
 							if(e.has_component<Behavior>()) {
-								e.component<Behavior>()->movementBehavior = monsterAggroMovement;
+								if(combat->team == PLAYER) e.component<Behavior>()->movementBehavior = monsterFriendlyMovement;
+								else e.component<Behavior>()->movementBehavior = monsterAggroMovement;
 								//ex.events.emit<ConsoleMessage>("The monster notices you and becomes angry!"); TODO : doesn't work anymore
 							}
 						}

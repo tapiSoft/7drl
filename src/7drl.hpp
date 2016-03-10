@@ -51,11 +51,17 @@ struct Damage {
 	Damage(uint8_t numrolls, uint8_t dicesize, int8_t bonus) : numrolls(numrolls), dicesize(dicesize), bonus(bonus) {}
 };
 
+enum Teams : uint8_t {
+	HOSTILE=0,
+	PLAYER=1
+};
+
 struct Combat
 {
 	uint8_t life;
+	uint8_t team;
 	Damage damage;
-	Combat(uint8_t maxlife, Damage damage) : life(maxlife), damage(damage) {}
+	Combat(uint8_t maxlife, Damage damage, uint8_t team) : life(maxlife), damage(damage), team(team) {}
 };
 
 struct Item
@@ -71,9 +77,8 @@ struct Inventory
 struct GameState;
 struct Behavior
 {
-	bool friendlyToPlayer : 1;
 	std::function<void(entityx::Entity, GameState*)> movementBehavior;
-	Behavior(std::function<void(entityx::Entity, GameState*)> movementBehavior, bool friendlyToPlayer) : movementBehavior(movementBehavior), friendlyToPlayer(friendlyToPlayer) {}
+	Behavior(std::function<void(entityx::Entity, GameState*)> movementBehavior) : movementBehavior(movementBehavior) {}
 };
 
 struct Cell {

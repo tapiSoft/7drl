@@ -29,8 +29,7 @@ struct GameState
 	void toggleInventory();
 	void renderState();
 	void newLevel();
-	void createMonster();
-	void createMonster(uint16_t, uint16_t, bool friendly);
+	void createMonster(uint16_t, uint16_t, uint8_t);
 	void moveEntity(Position oldpos, Position newpos) {
 		currentLevel.setEntityPresent(oldpos, false);
 		currentLevel.setEntityPresent(newpos, true);
@@ -62,18 +61,25 @@ class MovementSystem : public System<MovementSystem> {
 						Entity e;
 						if(state->findEntityAt(newpos, &e)) {
 							auto combat = e.component<Combat>();
-							evm.emit<Collision>(newpos.x, newpos.y);
-							auto dmg = player.component<Combat>()->damage.getDamage();
-							evm.emit<ConsoleMessage>("You hit the monster in the nose for " + std::to_string(dmg) + " damage.");
-							if(combat->life <= dmg) {
-								combat->life = 0;
-								evm.emit<ConsoleMessage>("The monster dies...");
-								e.component<Behavior>().remove();
-								e.component<Combat>().remove();
-								state->currentLevel.setItemPresent(newpos, true);
-								state->currentLevel.setEntityPresent(newpos, false);
+							if(combat->team == PLAYER) { // SWITCH PLACES
+								*e.component<Position>().get() = *player.component<Position>().get();
+								*player.component<Position>().get() = newpos;
+								evm.emit<ConsoleMessage>("You switch places with the friendly monster.");
 							}
-							else combat->life -= dmg;
+							else { // PUNCH
+								evm.emit<Collision>(newpos.x, newpos.y);
+								auto dmg = player.component<Combat>()->damage.getDamage();
+								evm.emit<ConsoleMessage>("You hit the monster in the nose for " + std::to_string(dmg) + " damage.");
+								if(combat->life <= dmg) {
+									combat->life = 0;
+									evm.emit<ConsoleMessage>("The monster dies...");
+									e.component<Behavior>().remove();
+									e.component<Combat>().remove();
+									state->currentLevel.setItemPresent(newpos, true);
+									state->currentLevel.setEntityPresent(newpos, false);
+								}
+								else combat->life -= dmg;
+							}
 						}
 						else {
 							// WutFace
