@@ -22,6 +22,8 @@ struct GameState
 	Level currentLevel;
 	GameState();
 
+	TCODConsole playerStatusConsole;
+
 	// Returns false if game should exit
 	bool handleInput(TCOD_key_t key);
 	void toggleInventory();
