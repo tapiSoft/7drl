@@ -39,8 +39,7 @@ void monsterAggroMovement(entityx::Entity e, GameState *state) {
 			state->ex.events.emit<ConsoleMessage>("A lifeless monster bumps into you.");
 			state->ex.events.emit<Collision>(newpos.x, newpos.y);
 		}
-	}
-	else moveMonsterTo(e, newpos, state);
+	} else moveMonsterTo(e, newpos, state);
 }
 
 void monsterRandomMovement(entityx::Entity e, GameState *state) {
@@ -48,14 +47,15 @@ void monsterRandomMovement(entityx::Entity e, GameState *state) {
 	Position newpos = *e.component<Position>().get();
 	if(random(0, 1)) newpos.x += random(0, 1) ? 1 : -1;
 	else newpos.y += random(0, 1) ? 1 : -1;
+	moveMonsterTo(e, newpos, state);
 }
 
 
-GameState::GameState() : render(RenderGame), currentLevel(100, 100) {
+GameState::GameState() : render(RenderGame), currentLevel(100, 100), playerStatusConsole(GLOBALCONFIG->width, 1) {
 	playerentity = ex.entities.create();
 	playerentity.assign<Model>('@', TCODColor::white);
 	playerentity.assign<Direction>(0,0);
-	playerentity.assign<Combat>(10, Damage(1,4,1));
+	playerentity.assign<Combat>(100, Damage(1,4,1));
 	playerentity.assign<Inventory>(Inventory {
 		{itemList[0]},
 	});
@@ -190,7 +190,7 @@ void GameState::renderState() {
 						else {
 							if(e.has_component<Behavior>()) {
 								e.component<Behavior>()->movementBehavior = monsterAggroMovement;
-								ex.events.emit<ConsoleMessage>("The monster notices you and becomes angry!");
+								//ex.events.emit<ConsoleMessage>("The monster notices you and becomes angry!"); TODO : doesn't work anymore
 							}
 						}
 					}
@@ -204,6 +204,11 @@ void GameState::renderState() {
 			auto playerpos = playerentity.component<Position>().get();
 			auto playermodel = playerentity.component<Model>().get();
 			TCODConsole::root->putChar(playerpos->x-xoffset, playerpos->y-yoffset, playermodel->character);
+
+			playerStatusConsole.setDefaultForeground(originalcolor);
+			playerStatusConsole.clear();
+			playerStatusConsole.print(0, 0, "Health: %d", playerentity.component<Combat>().get()->life);
+			TCODConsole::blit(&playerStatusConsole, 0, 0, GLOBALCONFIG->width, 1, TCODConsole::root, 0, GLOBALCONFIG->height-GLOBALCONFIG->consoleSize-1);
 
 			TCODConsole::root->setDefaultForeground(originalcolor);
 			auto &messageconsole = ex.systems.system<ConsoleSystem>()->GetConsole();
