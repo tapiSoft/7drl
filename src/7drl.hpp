@@ -112,7 +112,7 @@ struct Level {
 
 	void createRoom(int x1, int y1, int roomwidth, int roomheight) {
 		std::cout << "Creating room at (" << x1 << "," << y1 << ")\n";
-		for (int y = y1; y < y1+roomheight; ++y) 
+		for (int y = y1; y < y1+roomheight; ++y)
 			for (int x = x1; x < x1+roomwidth; ++x) {
 				map.setProperties(x, y, true, true);
 				celldata[y*width + x].notwall = true;
@@ -184,9 +184,22 @@ struct Level {
 	void refreshFov(Position pos) {
 		map.computeFov(pos.x, pos.y, 3);
 	}
-	bool canMoveTo(int x, int y) {
-		if(x < width && x >= 0 && y < height && y >= 0)
-			return celldata[y*width + x].notwall;
-		return false;
+	bool canMoveTo(int x, int y, int radius=0) {
+		if(radius == 0) {
+			if(x < width && x >= 0 && y < height && y >= 0)
+				return celldata[y*width + x].notwall;
+			return false;
+		} else {
+			for(auto i=-radius; i<=radius; ++i)
+			{
+				for(auto j=-radius; j<=radius; ++j)
+				{
+					if(x+i < width && x+i >=0 && y+j < height && y+j >= 0) {
+						if(!celldata[(y+j)*width + x+i].notwall) return false;
+					}
+				}
+			}
+			return true;
+		}
 	}
 };

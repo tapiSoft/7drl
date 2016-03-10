@@ -1,5 +1,6 @@
 #include "gamestate.hpp"
 #include "util/random.hpp"
+#include "7drl.hpp"
 
 std::unique_ptr<Config> GLOBALCONFIG;
 
@@ -60,10 +61,6 @@ GameState::GameState() : render(RenderGame), currentLevel(100, 100) {
 	ex.systems.add<DebugSystem>();
 	ex.systems.configure();
 
-	for(auto i=0; i<4; ++i)
-	{
-		createMonster();
-	}
 	for(auto i=0; i<2; ++i)
 	{
 		auto monsterEmitter = ex.entities.create();
@@ -73,7 +70,7 @@ GameState::GameState() : render(RenderGame), currentLevel(100, 100) {
 			// TODO: Better randomization
 			x = random(1, currentLevel.width);
 			y = random(1, currentLevel.height);
-		} while(!currentLevel.canMoveTo(x, y));
+		} while(!currentLevel.canMoveTo(x, y, 1));
 		monsterEmitter.assign<Position>(Position {x, y});
 		monsterEmitter.assign<Behavior>(Behavior([&](Entity emitter, GameState *state) {
 			auto epos = emitter.component<Position>().get();
@@ -109,6 +106,11 @@ GameState::GameState() : render(RenderGame), currentLevel(100, 100) {
 					desty = epos->y+1;
 				}
 				if(state->currentLevel.canMoveTo(destx, desty)) {
+					for(auto e : ex.entities.entities_with_components<Position>())
+					{
+						auto pos = e.component<Position>().get();
+						if(pos->x == destx && pos->y == desty) return;
+					}
 					createMonster(destx, desty);
 				}
 			}
