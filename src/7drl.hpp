@@ -5,7 +5,7 @@
 #include "util/random.hpp"
 #include <functional>
 #include "config.hpp"
-#include <entityx\entityx.h>
+#include <entityx/entityx.h>
 
 #include <iostream>
 
