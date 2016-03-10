@@ -273,11 +273,13 @@ void GameState::newLevel() {
 	playerentity.replace<Position>(currentLevel.initialpos);
 }
 
-Entity GameState::findEntityAt(Position p) {
+bool GameState::findEntityAt(Position p, Entity* entity) {
 	ComponentHandle<Position> position;
 	ComponentHandle<Combat> combat;
 	for (Entity e : ex.entities.entities_with_components(position, combat))
-		if(*position.get() == p)
-			return e;
-	assert(false);
+		if(*position.get() == p) {
+			*entity = e;
+			return true;
+		}
+	return false;
 }
