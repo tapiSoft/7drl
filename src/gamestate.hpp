@@ -27,6 +27,8 @@ struct GameState
 	void toggleInventory();
 	void renderState();
 	void newLevel();
+	void createMonster();
+	void createMonster(uint16_t, uint16_t);
 };
 
 class MovementSystem : public System<MovementSystem> {
@@ -111,7 +113,7 @@ class MovementSystem : public System<MovementSystem> {
 					}
 					em.each<Behavior>([&](Entity e, const Behavior &b) {
 						b.movementBehavior(e, state);
-				});
+					});
 				});
 			}
 		}

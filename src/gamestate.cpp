@@ -29,7 +29,7 @@ void monsterMovement(entityx::Entity e, GameState *state) {
 			if(combat) {
 				assert(combat->life > 0);
 				auto dmg = combat->damage.getDamage();
-				
+
 				state->ex.events.emit<ConsoleMessage>("A monster hits you for " + std::to_string(dmg) + " damage.");
 				state->ex.events.emit<Collision>(newpos.x, newpos.y);
 			} else {
@@ -62,19 +62,76 @@ GameState::GameState() : render(RenderGame), currentLevel(100, 100) {
 
 	for(auto i=0; i<4; ++i)
 	{
-		auto monster = ex.entities.create();
-		monster.assign<Model>('m', TCODColor::darkerPurple);
-		monster.assign<Inventory>(Inventory {{itemList[0]}});
+		createMonster();
+	}
+	for(auto i=0; i<2; ++i)
+	{
+		auto monsterEmitter = ex.entities.create();
+		monsterEmitter.assign<Model>('%', TCODColor::blue);
 		uint16_t x, y;
 		do {
 			// TODO: Better randomization
 			x = random(1, currentLevel.width);
 			y = random(1, currentLevel.height);
 		} while(!currentLevel.canMoveTo(x, y));
-		monster.assign<Position>(Position {x, y});
-		monster.assign<Behavior>(monsterMovement);
-		monster.assign<Combat>(10, Damage(1, 4, 1));
+		monsterEmitter.assign<Position>(Position {x, y});
+		monsterEmitter.assign<Behavior>(Behavior([&](Entity emitter, GameState *state) {
+			auto epos = emitter.component<Position>().get();
+			auto emit_if_zero = random(0, 5);
+			if(emit_if_zero == 0) {
+				auto direction = random(1, 8);
+				uint16_t destx, desty;
+
+				// TODO: This is horrible :D
+				if(direction == 1) {
+					destx = epos->x-1;
+					desty = epos->y-1;
+				} else if(direction == 2) {
+					destx = epos->x;
+					desty = epos->y-1;
+				} else if(direction == 3) {
+					destx = epos->x+1;
+					desty = epos->y-1;
+				} else if(direction == 4) {
+					destx = epos->x-1;
+					desty = epos->y;
+				} else if(direction == 5) {
+					destx = epos->x+1;
+					desty = epos->y;
+				} else if(direction == 6) {
+					destx = epos->x-1;
+					desty = epos->y+1;
+				} else if(direction == 7) {
+					destx = epos->x;
+					desty = epos->y+1;
+				} else {
+					destx = epos->x+1;
+					desty = epos->y+1;
+				}
+				if(state->currentLevel.canMoveTo(destx, desty)) {
+					createMonster(destx, desty);
+				}
+			}
+		}));
 	}
+}
+
+void GameState::createMonster() {
+	uint16_t x, y;
+	do {
+		// TODO: Better randomization
+		x = random(1, currentLevel.width);
+		y = random(1, currentLevel.height);
+	} while(!currentLevel.canMoveTo(x, y));
+	createMonster(x, y);
+}
+void GameState::createMonster(uint16_t x, uint16_t y) {
+	auto monster = ex.entities.create();
+	monster.assign<Model>('m', TCODColor::darkerPurple);
+	monster.assign<Inventory>(Inventory {{itemList[0]}});
+	monster.assign<Position>(Position {x, y});
+	monster.assign<Behavior>(monsterMovement);
+	monster.assign<Combat>(10, Damage(1, 4, 1));
 }
 
 // Returns false if game should exit
