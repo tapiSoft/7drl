@@ -46,6 +46,8 @@ void monsterAggroMovement(entityx::Entity e, GameState *state) {
 
 			state->ex.events.emit<ConsoleMessage>("A monster hits you for " + std::to_string(dmg) + " damage.");
 			state->ex.events.emit<Collision>(newpos.x, newpos.y);
+
+			state->playerentity.component<Combat>()->life -= dmg;
 		}
 		else {
 			state->ex.events.emit<ConsoleMessage>("A lifeless monster bumps into you.");
@@ -55,7 +57,6 @@ void monsterAggroMovement(entityx::Entity e, GameState *state) {
 }
 
 void monsterRandomMovement(entityx::Entity e, GameState *state) {
-	Position playerpos = *state->playerentity.component<Position>().get();
 	Position newpos = *e.component<Position>().get();
 	if(random(0, 1)) newpos.x += random(0, 1) ? 1 : -1;
 	else newpos.y += random(0, 1) ? 1 : -1;
@@ -197,8 +198,11 @@ void GameState::renderState() {
 					auto color = model.color;
 					if(combat) {
 						if(e.has_component<Behavior>()) {
-							if(combat->team == PLAYER) e.component<Behavior>()->movementBehavior = monsterFriendlyMovement;
-							else e.component<Behavior>()->movementBehavior = monsterAggroMovement;
+							auto mbh = e.component<Behavior>()->movementBehavior.target<decltype(monsterRandomMovement)*>();
+							if(mbh && (*mbh == monsterRandomMovement || *mbh == monsterFriendlyMovement)) {
+								if(combat->team == PLAYER) e.component<Behavior>()->movementBehavior = monsterFriendlyMovement;
+								else e.component<Behavior>()->movementBehavior = monsterAggroMovement;
+							}
 							//ex.events.emit<ConsoleMessage>("The monster notices you and becomes angry!"); TODO : doesn't work anymore
 						}
 					} else {
