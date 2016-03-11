@@ -12,9 +12,11 @@ const TCODColor Level::COLORS[] = { Level::COLOR_DARK_GROUND, Level::COLOR_DARK_
 
 void moveMonsterTo(Entity e, Position newpos, GameState *state) {
 	if(state->currentLevel.canMoveTo(newpos)) {
-		auto pos = e.component<Position>().get();
-		state->moveEntity(*pos, newpos);
-		*pos = newpos;
+		if(!state->findEntityAt(newpos, nullptr)) {
+			auto pos = e.component<Position>().get();
+			state->moveEntity(*pos, newpos);
+			*pos = newpos;
+		}
 	}
 }
 
@@ -267,7 +269,7 @@ bool GameState::findEntityAt(Position p, Entity* entity) {
 	ComponentHandle<Combat> combat;
 	for (Entity e : ex.entities.entities_with_components(position, combat))
 		if(*position.get() == p) {
-			*entity = e;
+			if(entity) *entity = e;
 			return true;
 		}
 	return false;
