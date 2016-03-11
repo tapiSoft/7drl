@@ -1,7 +1,6 @@
 #pragma once
 
 #include "7drl.hpp"
-#include "items.hpp"
 
 #include <entityx/entityx.h>
 #include <deque>
@@ -23,6 +22,7 @@ struct GameState
 	GameState();
 
 	TCODConsole playerStatusConsole;
+	uint8_t inventoryIndex;
 
 	// Returns false if game should exit
 	bool handleInput(TCOD_key_t key);

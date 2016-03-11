@@ -12,6 +12,7 @@
 extern std::unique_ptr<Config> GLOBALCONFIG;
 
 typedef std::string ConsoleMessage;
+struct GameState;
 
 struct Position
 {
@@ -67,6 +68,7 @@ struct Combat
 struct Item
 {
 	std::string name;
+	std::function<void(GameState *state)> effect;
 };
 
 struct Inventory
@@ -74,7 +76,6 @@ struct Inventory
 	std::vector<Item> items;
 };
 
-struct GameState;
 struct Behavior
 {
 	std::function<void(entityx::Entity, GameState*)> movementBehavior;

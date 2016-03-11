@@ -4,7 +4,6 @@
 #include <console.hpp>
 
 #include "7drl.hpp"
-#include "items.hpp"
 #include "config.hpp"
 #include "gamestate.hpp"
 #include "util/cpptoml.h"

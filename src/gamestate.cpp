@@ -4,6 +4,15 @@
 
 std::unique_ptr<Config> GLOBALCONFIG;
 
+std::vector<Item> itemList = {
+	Item {
+		"Potion of greater health",
+		[](GameState *state) {
+			state->playerentity.component<Combat>()->life += 50;
+		}
+	},
+};
+
 const TCODColor Level::COLOR_DARK_WALL = TCODColor(0, 0, 100);
 const TCODColor Level::COLOR_LIGHT_WALL = TCODColor(120, 110, 50);
 const TCODColor Level::COLOR_DARK_GROUND = TCODColor(50, 50, 150);
@@ -66,7 +75,7 @@ void monsterRandomMovement(entityx::Entity e, GameState *state) {
 }
 
 
-GameState::GameState() : render(RenderGame), currentLevel(100, 100), playerStatusConsole(GLOBALCONFIG->width, 1) {
+GameState::GameState() : render(RenderGame), currentLevel(100, 100), playerStatusConsole(GLOBALCONFIG->width, 1), inventoryIndex(0) {
 	playerentity = ex.entities.create();
 	playerentity.assign<Model>('@', TCODColor::white);
 	playerentity.assign<Direction>(0,0);
@@ -155,6 +164,14 @@ bool GameState::handleInput(TCOD_key_t key) {
 			break;
 		case TCODK_ESCAPE:
 			return false;
+		case TCODK_ENTER:
+			if(this->render == RenderInventory) {
+				auto &items = playerentity.component<Inventory>()->items;
+				auto item = items.at(inventoryIndex);
+				item.effect(this);
+				items.erase(items.begin() + inventoryIndex);
+			}
+			break;
 		case TCODK_CHAR:
 			if(this->render == RenderGame)
 			{
@@ -168,7 +185,15 @@ bool GameState::handleInput(TCOD_key_t key) {
 				else if(key.c == GLOBALCONFIG->keybindings.downright || key.c == GLOBALCONFIG->keybindings.downleft || key.c == GLOBALCONFIG->keybindings.down)
 					dir->dy = 1;
 			}
-			else if(key.c == GLOBALCONFIG->keybindings.inventory) toggleInventory();
+			else if(this->render == RenderInventory) {
+				if(key.c == GLOBALCONFIG->keybindings.up) {
+					if(inventoryIndex>0) inventoryIndex--;
+				} else if(key.c == GLOBALCONFIG->keybindings.down) {
+					inventoryIndex++;
+				} else {
+					toggleInventory();
+				}
+			}
 		default:
 			break;
 		}
@@ -177,7 +202,10 @@ bool GameState::handleInput(TCOD_key_t key) {
 }
 
 void GameState::toggleInventory() {
-	if(this->render == RenderGame) this->render = RenderInventory;
+	if(this->render == RenderGame) {
+		inventoryIndex=0;
+		this->render = RenderInventory;
+	}
 	else this->render = RenderGame;
 }
 
@@ -234,26 +262,51 @@ void GameState::renderState() {
 		}
 		case RenderInventory:
 			std::string str = "Inventory";
+			TCODColor originalcolor = TCODConsole::root->getDefaultForeground();
 			TCODConsole::root->print(GLOBALCONFIG->width/2 - str.length()/2, 1, "%s", str.c_str());
 			auto i = 2;
 			TCODConsole::root->print(2, i++, "Your inventory:");
+			uint8_t ii = 0;
+
+			uint8_t itemcount=0;
+			auto playerpos = this->playerentity.component<const Position>().get();
+			ex.entities.each<const Position, const Inventory>([&](Entity, const Position &pos, const Inventory &i) {
+				if(pos == *playerpos) {
+					itemcount += i.items.size();
+				}
+			});
+			if(inventoryIndex>=itemcount-1) inventoryIndex=itemcount-1;
 			for(auto &item : this->playerentity.component<const Inventory>()->items)
 			{
+				if(ii == inventoryIndex) {
+					TCODConsole::root->setDefaultForeground(TCODColor::green);
+				} else {
+					TCODConsole::root->setDefaultForeground(originalcolor);
+				}
 				TCODConsole::root->print(2, i++, "%s", item.name.c_str());
+				ii++;
 			}
+			std::cout << "inventoryIndex: " << ((int)inventoryIndex) << " " << (int)itemcount << std::endl;
 			i+=2;
+			TCODConsole::root->setDefaultForeground(originalcolor);
 			TCODConsole::root->print(2, i++, "Surroundings:");
-			auto playerpos = this->playerentity.component<const Position>().get();
 			ex.entities.each<const Position, const Inventory>([&](Entity e, const Position &pos, const Inventory &inv) {
 				if(e != playerentity) {
 					if(pos == *playerpos) {
 						for(auto &item : inv.items)
 						{
+							if(ii == inventoryIndex) {
+								TCODConsole::root->setDefaultForeground(TCODColor::green);
+							} else {
+								TCODConsole::root->setDefaultForeground(originalcolor);
+							}
 							TCODConsole::root->print(2, i++, "%s", item.name.c_str());
+							ii++;
 						}
 					}
 				}
 			});
+			TCODConsole::root->setDefaultForeground(originalcolor);
 			break;
 	}
 	TCODConsole::flush();
