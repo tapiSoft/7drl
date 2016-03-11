@@ -196,16 +196,14 @@ void GameState::renderState() {
 					auto combat = e.component<Combat>();
 					auto color = model.color;
 					if(combat) {
-						if(combat->life == 0) {
-							color = TCODColor::darkRed;
+						if(e.has_component<Behavior>()) {
+							if(combat->team == PLAYER) e.component<Behavior>()->movementBehavior = monsterFriendlyMovement;
+							else e.component<Behavior>()->movementBehavior = monsterAggroMovement;
+							//ex.events.emit<ConsoleMessage>("The monster notices you and becomes angry!"); TODO : doesn't work anymore
 						}
-						else {
-							if(e.has_component<Behavior>()) {
-								if(combat->team == PLAYER) e.component<Behavior>()->movementBehavior = monsterFriendlyMovement;
-								else e.component<Behavior>()->movementBehavior = monsterAggroMovement;
-								//ex.events.emit<ConsoleMessage>("The monster notices you and becomes angry!"); TODO : doesn't work anymore
-							}
-						}
+					} else {
+						// No combat, no life
+						color = TCODColor::darkRed;
 					}
 					TCODConsole::root->setDefaultForeground(color);
 					TCODConsole::root->putChar(position.x-xoffset, position.y-yoffset, model.character);
